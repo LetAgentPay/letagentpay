@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # CORS
     frontend_url: str = "http://localhost:3000"
 
+    # App version (set via APP_VERSION env var in Docker)
+    app_version: str = "dev"
+
     # Playground (public demo)
     playground_enabled: bool = False
     playground_session_ttl_minutes: int = 15
