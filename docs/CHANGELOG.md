@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-04-02
+
+### Added
+- Version field in `/api/v1/config/public` response
+- Clickable version links on all pages — link to GitHub Release
+- GitHub Releases with changelog notes created automatically on each release
+
 ## [1.0.1] - 2026-04-02
 
 - Enterprise version improvements

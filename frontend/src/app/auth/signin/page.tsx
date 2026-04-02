@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { VersionLink } from "@/components/version-link";
 
 type AuthMode = "magic_link" | "password" | null;
 
@@ -198,7 +199,7 @@ export default function SignInPage() {
       >
         &larr; Back to home
       </Link>
-      <p className="mt-2 text-xs opacity-30">v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
+      <p className="mt-2 text-xs opacity-30"><VersionLink /></p>
     </div>
   );
 }

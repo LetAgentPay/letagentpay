@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Home, Settings, BookOpen, LogOut, Menu, FlaskConical, LifeBuoy } from "lucide-react";
 import { getEENavItems } from "@/lib/ee-hooks";
 import { openSupportEmail } from "@/components/support-link";
+import { VersionLink } from "@/components/version-link";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home, exact: true },
@@ -88,7 +89,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             Logout
           </Button>
           <div className="mt-auto pt-3 text-center text-xs opacity-40">
-            v{process.env.NEXT_PUBLIC_APP_VERSION}
+            <VersionLink />
           </div>
         </nav>
       </aside>
@@ -143,7 +144,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     Logout
                   </Button>
                   <div className="mt-auto pt-3 text-center text-xs opacity-40">
-                    v{process.env.NEXT_PUBLIC_APP_VERSION}
+                    <VersionLink />
                   </div>
                 </nav>
               </SheetContent>

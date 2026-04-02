@@ -4,6 +4,7 @@ import { ApiEndpoints } from "@/components/api-endpoints";
 import { PublicNav } from "@/components/public-nav";
 import { SupportLink } from "@/components/support-link";
 import { PlaygroundSection } from "@/components/playground-link";
+import { VersionLink } from "@/components/version-link";
 
 export default function DevelopersPage() {
   return (
@@ -356,7 +357,7 @@ def request_purchase(amount, category, ...):
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 text-sm text-muted-foreground">
           <span>
             LetAgentPay &copy; {new Date().getFullYear()}
-            <span className="ml-2 text-xs opacity-40">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
+            <VersionLink className="ml-2 text-xs opacity-40" />
           </span>
           <div className="flex gap-4">
             <Link href="/about" className="hover:text-foreground">
