@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report a bug in LetAgentPay
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Backend (API)
+        - Frontend (Dashboard)
+        - Agent API
+        - Policy Engine
+        - Docker / Self-hosted
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the issue
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Self-hosted (Docker)
+        - SaaS (letagentpay.com)
+        - Local development
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any relevant error messages or logs
+      render: shell

@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: letagentpay
+      POSTGRES_USER: letagentpay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-letagentpay}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U letagentpay"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    command: ["--migrate"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://letagentpay:${POSTGRES_PASSWORD:-letagentpay}@postgres:5432/letagentpay
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      SELF_HOSTED: "true"
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      FRONTEND_URL: ${SITE_URL:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_SELF_HOSTED: "true"
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL:-http://localhost:3000}
+        INTERNAL_API_URL: http://backend:8000
+    environment:
+      HOSTNAME: "0.0.0.0"
+      INTERNAL_API_URL: http://backend:8000
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

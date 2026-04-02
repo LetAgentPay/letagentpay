@@ -1,0 +1,376 @@
+from datetime import datetime
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
+import redis.asyncio as aioredis
+
+# TTL constants — slightly longer than the time window to handle timezone edge cases
+DAILY_TTL = 26 * 3600  # 26 hours (24h + 2h buffer for timezone variance)
+WEEKLY_TTL = 8 * 86400  # 8 days (7d + 1d buffer)
+MONTHLY_TTL = 32 * 86400  # 32 days (31d + 1d buffer)
+
+# Subunit multiplier: store amounts as integer cents for exact arithmetic.
+# Decimal("150.50") → 15050 (INCRBY, no float precision loss).
+_SUBUNITS = 100
+
+
+def _to_subunits(amount: Decimal) -> int:
+    """Convert Decimal amount to integer subunits (cents).
+
+    Uses quantize to round to 2 decimal places before converting,
+    ensuring Decimal("1.005") → 101 (rounded) not 100 (truncated).
+    """
+    return int((amount * _SUBUNITS).to_integral_value())
+
+
+def _from_subunits(raw: str | bytes | None) -> Decimal:
+    """Convert Redis integer subunits back to Decimal."""
+    if not raw:
+        return Decimal(0)
+    return Decimal(int(raw)) / _SUBUNITS
+
+
+# ---------------------------------------------------------------------------
+# Agent-level spending
+# ---------------------------------------------------------------------------
+
+
+async def get_daily_spent(
+    redis: aioredis.Redis, agent_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    key = f"spent:{agent_id}:{currency}:daily:{today}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_weekly_spent(
+    redis: aioredis.Redis, agent_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    # ISO week: Monday is day 1
+    week_key = now.strftime("%G-W%V")
+    key = f"spent:{agent_id}:{currency}:weekly:{week_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_monthly_spent(
+    redis: aioredis.Redis, agent_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    month_key = datetime.now(tz).strftime("%Y-%m")
+    key = f"spent:{agent_id}:{currency}:monthly:{month_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def add_spent(
+    redis: aioredis.Redis,
+    agent_id: str,
+    amount: Decimal,
+    currency: str,
+    timezone: str,
+) -> None:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    cents = _to_subunits(amount)
+
+    # Daily
+    daily_key = f"spent:{agent_id}:{currency}:daily:{now.strftime('%Y-%m-%d')}"
+    await redis.incrby(daily_key, cents)
+    await redis.expire(daily_key, DAILY_TTL)
+
+    # Weekly
+    week_key = f"spent:{agent_id}:{currency}:weekly:{now.strftime('%G-W%V')}"
+    await redis.incrby(week_key, cents)
+    await redis.expire(week_key, WEEKLY_TTL)
+
+    # Monthly
+    month_key = f"spent:{agent_id}:{currency}:monthly:{now.strftime('%Y-%m')}"
+    await redis.incrby(month_key, cents)
+    await redis.expire(month_key, MONTHLY_TTL)
+
+
+# ---------------------------------------------------------------------------
+# Account-level spending
+# ---------------------------------------------------------------------------
+
+
+async def get_account_daily_spent(
+    redis: aioredis.Redis, account_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    key = f"acct_spent:{account_id}:{currency}:daily:{today}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_account_weekly_spent(
+    redis: aioredis.Redis, account_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    week_key = datetime.now(tz).strftime("%G-W%V")
+    key = f"acct_spent:{account_id}:{currency}:weekly:{week_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_account_monthly_spent(
+    redis: aioredis.Redis, account_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    month_key = datetime.now(tz).strftime("%Y-%m")
+    key = f"acct_spent:{account_id}:{currency}:monthly:{month_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_rule_spent(
+    redis: aioredis.Redis, account_id: str, rule_id: str, currency: str
+) -> Decimal:
+    key = f"acct_spent:{account_id}:{currency}:rule:{rule_id}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def add_account_spent(
+    redis: aioredis.Redis,
+    account_id: str,
+    amount: Decimal,
+    currency: str,
+    timezone: str,
+    active_rule_ids: list[str] | None = None,
+) -> None:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    cents = _to_subunits(amount)
+
+    # Daily
+    daily_key = f"acct_spent:{account_id}:{currency}:daily:{now.strftime('%Y-%m-%d')}"
+    await redis.incrby(daily_key, cents)
+    await redis.expire(daily_key, DAILY_TTL)
+
+    # Weekly
+    week_key = f"acct_spent:{account_id}:{currency}:weekly:{now.strftime('%G-W%V')}"
+    await redis.incrby(week_key, cents)
+    await redis.expire(week_key, WEEKLY_TTL)
+
+    # Monthly
+    month_key = f"acct_spent:{account_id}:{currency}:monthly:{now.strftime('%Y-%m')}"
+    await redis.incrby(month_key, cents)
+    await redis.expire(month_key, MONTHLY_TTL)
+
+    # Per-rule counters (for temporal total rules)
+    if active_rule_ids:
+        for rule_id in active_rule_ids:
+            rule_key = f"acct_spent:{account_id}:{currency}:rule:{rule_id}"
+            await redis.incrby(rule_key, cents)
+            # TTL set externally based on rule end_at
+
+
+# ---------------------------------------------------------------------------
+# Agent-level holds
+# ---------------------------------------------------------------------------
+
+
+async def get_daily_held(
+    redis: aioredis.Redis, agent_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    key = f"hold:{agent_id}:{currency}:daily:{today}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_weekly_held(
+    redis: aioredis.Redis, agent_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    week_key = datetime.now(tz).strftime("%G-W%V")
+    key = f"hold:{agent_id}:{currency}:weekly:{week_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_monthly_held(
+    redis: aioredis.Redis, agent_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    month_key = datetime.now(tz).strftime("%Y-%m")
+    key = f"hold:{agent_id}:{currency}:monthly:{month_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def add_held(
+    redis: aioredis.Redis,
+    agent_id: str,
+    amount: Decimal,
+    currency: str,
+    timezone: str,
+) -> None:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    cents = _to_subunits(amount)
+
+    daily_key = f"hold:{agent_id}:{currency}:daily:{now.strftime('%Y-%m-%d')}"
+    await redis.incrby(daily_key, cents)
+    await redis.expire(daily_key, DAILY_TTL)
+
+    week_key = f"hold:{agent_id}:{currency}:weekly:{now.strftime('%G-W%V')}"
+    await redis.incrby(week_key, cents)
+    await redis.expire(week_key, WEEKLY_TTL)
+
+    month_key = f"hold:{agent_id}:{currency}:monthly:{now.strftime('%Y-%m')}"
+    await redis.incrby(month_key, cents)
+    await redis.expire(month_key, MONTHLY_TTL)
+
+
+async def remove_held(
+    redis: aioredis.Redis,
+    agent_id: str,
+    amount: Decimal,
+    currency: str,
+    timezone: str,
+) -> None:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    cents = _to_subunits(amount)
+
+    daily_key = f"hold:{agent_id}:{currency}:daily:{now.strftime('%Y-%m-%d')}"
+    await redis.decrby(daily_key, cents)
+
+    week_key = f"hold:{agent_id}:{currency}:weekly:{now.strftime('%G-W%V')}"
+    await redis.decrby(week_key, cents)
+
+    month_key = f"hold:{agent_id}:{currency}:monthly:{now.strftime('%Y-%m')}"
+    await redis.decrby(month_key, cents)
+
+
+# ---------------------------------------------------------------------------
+# Account-level holds
+# ---------------------------------------------------------------------------
+
+
+async def get_account_daily_held(
+    redis: aioredis.Redis, account_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    key = f"acct_hold:{account_id}:{currency}:daily:{today}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_account_weekly_held(
+    redis: aioredis.Redis, account_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    week_key = datetime.now(tz).strftime("%G-W%V")
+    key = f"acct_hold:{account_id}:{currency}:weekly:{week_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_account_monthly_held(
+    redis: aioredis.Redis, account_id: str, currency: str, timezone: str
+) -> Decimal:
+    tz = ZoneInfo(timezone)
+    month_key = datetime.now(tz).strftime("%Y-%m")
+    key = f"acct_hold:{account_id}:{currency}:monthly:{month_key}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def get_account_rule_held(
+    redis: aioredis.Redis, account_id: str, rule_id: str, currency: str
+) -> Decimal:
+    key = f"acct_hold:{account_id}:{currency}:rule:{rule_id}"
+    val = await redis.get(key)
+    return _from_subunits(val)
+
+
+async def add_account_held(
+    redis: aioredis.Redis,
+    account_id: str,
+    amount: Decimal,
+    currency: str,
+    timezone: str,
+    active_rule_ids: list[str] | None = None,
+) -> None:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    cents = _to_subunits(amount)
+
+    daily_key = f"acct_hold:{account_id}:{currency}:daily:{now.strftime('%Y-%m-%d')}"
+    await redis.incrby(daily_key, cents)
+    await redis.expire(daily_key, DAILY_TTL)
+
+    week_key = f"acct_hold:{account_id}:{currency}:weekly:{now.strftime('%G-W%V')}"
+    await redis.incrby(week_key, cents)
+    await redis.expire(week_key, WEEKLY_TTL)
+
+    month_key = f"acct_hold:{account_id}:{currency}:monthly:{now.strftime('%Y-%m')}"
+    await redis.incrby(month_key, cents)
+    await redis.expire(month_key, MONTHLY_TTL)
+
+    if active_rule_ids:
+        for rule_id in active_rule_ids:
+            rule_key = f"acct_hold:{account_id}:{currency}:rule:{rule_id}"
+            await redis.incrby(rule_key, cents)
+
+
+async def _scan_keys(redis: aioredis.Redis, pattern: str) -> list:
+    """Collect keys matching pattern using SCAN (non-blocking, unlike KEYS)."""
+    keys = []
+    async for key in redis.scan_iter(match=pattern, count=100):
+        keys.append(key)
+    return keys
+
+
+async def clear_agent_spending(redis: aioredis.Redis, agent_id: str) -> None:
+    """Delete all spending/hold Redis keys for an agent."""
+    keys = await _scan_keys(redis, f"spent:{agent_id}:*")
+    keys += await _scan_keys(redis, f"hold:{agent_id}:*")
+    if keys:
+        await redis.delete(*keys)
+
+
+async def clear_account_spending(redis: aioredis.Redis, account_id: str) -> None:
+    """Delete all spending/hold Redis keys for an account."""
+    keys = await _scan_keys(redis, f"acct_spent:{account_id}:*")
+    keys += await _scan_keys(redis, f"acct_hold:{account_id}:*")
+    if keys:
+        await redis.delete(*keys)
+
+
+async def remove_account_held(
+    redis: aioredis.Redis,
+    account_id: str,
+    amount: Decimal,
+    currency: str,
+    timezone: str,
+    active_rule_ids: list[str] | None = None,
+) -> None:
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
+    cents = _to_subunits(amount)
+
+    daily_key = f"acct_hold:{account_id}:{currency}:daily:{now.strftime('%Y-%m-%d')}"
+    await redis.decrby(daily_key, cents)
+
+    week_key = f"acct_hold:{account_id}:{currency}:weekly:{now.strftime('%G-W%V')}"
+    await redis.decrby(week_key, cents)
+
+    month_key = f"acct_hold:{account_id}:{currency}:monthly:{now.strftime('%Y-%m')}"
+    await redis.decrby(month_key, cents)
+
+    if active_rule_ids:
+        for rule_id in active_rule_ids:
+            rule_key = f"acct_hold:{account_id}:{currency}:rule:{rule_id}"
+            await redis.decrby(rule_key, cents)

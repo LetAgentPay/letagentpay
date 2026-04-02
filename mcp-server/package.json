@@ -1,0 +1,22 @@
+{
+  "name": "letagentpay-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for LetAgentPay — manage AI agent purchases",
+  "main": "index.js",
+  "bin": {
+    "letagentpay-mcp": "./index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": ["mcp", "letagentpay", "ai-agent", "purchases"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.1"
+  }
+}

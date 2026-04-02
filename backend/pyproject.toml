@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 88
+target-version = ["py313", "py314"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B008", "E402", "B904", "E712"]
+
+[tool.mypy]
+python_version = "3.14"
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [".venv", "alembic", "tests"]
