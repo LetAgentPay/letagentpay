@@ -2,12 +2,15 @@
 
 ## [Unreleased]
 
+## [1.0.10] - 2026-04-02
+
+- Enterprise version improvements
+
 ## [1.0.9] - 2026-04-02
 
 ### Fixed
 - CI: resolved Node.js 20 deprecation warnings in all GitHub Actions workflows
 - CI: resolved ESLint unused variable warning in playground page
-- Deploy: backend version is now baked into Docker image at build time (ARG APP_VERSION)
 
 ## [1.0.2] - 2026-04-02
 

@@ -17,9 +17,6 @@ RUN addgroup --system appgroup && \
     mkdir -p /app/logs && \
     chown -R appuser:appgroup /app
 
-ARG APP_VERSION=dev
-ENV APP_VERSION=${APP_VERSION}
-
 EXPOSE 8000
 
 COPY entrypoint.sh /entrypoint.sh
