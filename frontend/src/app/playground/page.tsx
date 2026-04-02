@@ -162,6 +162,7 @@ export default function PlaygroundPage() {
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { expiresAt: _, ...sessionData } = stored;
       setSession(sessionData as SessionData);
       setTimeLeft(remaining);
