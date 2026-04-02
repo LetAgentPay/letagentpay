@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.11] - 2026-04-02
+
+- Enterprise version improvements
+
 ## [1.0.10] - 2026-04-02
 
 - Enterprise version improvements
