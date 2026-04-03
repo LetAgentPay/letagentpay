@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import settings
 from app.redis import close_redis, init_redis
 from app.services.expiry import expire_pending_requests_loop
+from app.services.telegram import send_alert_notification
 from app.services.telegram import setup_webhook as setup_telegram_webhook
 from app.services.telegram import start_polling as start_telegram_polling
 
@@ -205,19 +206,15 @@ class ExceptionAlertMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             from fastapi.responses import JSONResponse
 
-            from app.services.telegram import send_alert_notification
-
             _logger = logging.getLogger(__name__)
             _logger.exception(
                 "Unhandled exception on %s %s", request.method, request.url.path
             )
 
-            asyncio.create_task(
-                send_alert_notification(
-                    f"💥 Unhandled exception\n"
-                    f"{request.method} {request.url.path}\n"
-                    f"{type(exc).__name__}: {exc}"
-                )
+            await send_alert_notification(
+                f"💥 Unhandled exception\n"
+                f"{request.method} {request.url.path}\n"
+                f"{type(exc).__name__}: {exc}"
             )
 
             return JSONResponse(
@@ -308,7 +305,6 @@ async def health():
 
     from app.database import async_session
     from app.redis import get_redis
-    from app.services.telegram import send_alert_notification
 
     checks: dict[str, str] = {}
 
@@ -333,10 +329,8 @@ async def health():
             last_sent = _health_alert_cooldown.get(service, 0)
             if now - last_sent > _HEALTH_ALERT_INTERVAL:
                 _health_alert_cooldown[service] = now
-                asyncio.create_task(
-                    send_alert_notification(
-                        f"🚨 Health check FAILED: {service}\n{status}"
-                    )
+                await send_alert_notification(
+                    f"🚨 Health check FAILED: {service}\n{status}"
                 )
 
     all_ok = all(v == "ok" for v in checks.values())
