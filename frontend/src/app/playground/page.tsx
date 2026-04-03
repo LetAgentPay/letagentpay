@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { BudgetBar } from "@/components/budget-bar";
 import Link from "next/link";
 import { PublicNav } from "@/components/public-nav";
+import { PublicFooter } from "@/components/public-footer";
 import { usePublicConfig } from "@/lib/hooks/use-public-config";
 import { useRouter } from "next/navigation";
 import {
@@ -626,6 +627,8 @@ export default function PlaygroundPage() {
           </div>
         )}
       </div>
+
+      <PublicFooter />
     </div>
   );
 }

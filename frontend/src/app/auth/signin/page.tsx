@@ -30,6 +30,7 @@ export default function SignInPage() {
   const [otpCode, setOtpCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const otpRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     api.authMode().then((res) => setAuthMode(res.mode)).catch(() => setAuthMode("magic_link"));
@@ -52,6 +53,8 @@ export default function SignInPage() {
 
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError("");
     setVerifying(true);
 
@@ -63,6 +66,7 @@ export default function SignInPage() {
       setError(authError(err));
     } finally {
       setVerifying(false);
+      submittingRef.current = false;
     }
   }
 

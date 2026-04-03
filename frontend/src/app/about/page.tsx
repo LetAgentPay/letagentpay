@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PublicNav } from "@/components/public-nav";
 import { SupportLink } from "@/components/support-link";
-import { VersionLink } from "@/components/version-link";
+import { PublicFooter } from "@/components/public-footer";
 
 export const metadata: Metadata = {
   title: "About",
@@ -322,23 +322,7 @@ export default function AboutPage() {
         </section>
       </article>
 
-      <footer className="border-t py-8">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 text-sm text-muted-foreground">
-          <span>
-            LetAgentPay &copy; {new Date().getFullYear()}
-            <VersionLink className="ml-2 text-xs opacity-40" />
-          </span>
-          <div className="flex gap-4">
-            <Link href="/about" className="hover:text-foreground">
-              About
-            </Link>
-            <Link href="/developers" className="hover:text-foreground">
-              Developers
-            </Link>
-            <SupportLink className="hover:text-foreground" />
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

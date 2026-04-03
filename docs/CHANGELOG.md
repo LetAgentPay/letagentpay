@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.0.13] - 2026-04-03
+
+### Fixed
+- Auth: prevent double OTP submission on mobile — race condition caused "Invalid or expired code" error despite successful registration
+
 ## [1.0.12] - 2026-04-02
 
 - Enterprise version improvements

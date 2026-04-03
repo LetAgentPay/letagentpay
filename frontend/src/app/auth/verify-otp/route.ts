@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
     }
 
     return resp;
-  } catch {
+  } catch (err) {
+    console.error("[verify-otp] route handler error:", err);
     return NextResponse.json(
       { detail: "Server error" },
       { status: 500 },

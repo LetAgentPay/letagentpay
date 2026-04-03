@@ -2,9 +2,8 @@ import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiEndpoints } from "@/components/api-endpoints";
 import { PublicNav } from "@/components/public-nav";
-import { SupportLink } from "@/components/support-link";
 import { PlaygroundSection } from "@/components/playground-link";
-import { VersionLink } from "@/components/version-link";
+import { PublicFooter } from "@/components/public-footer";
 
 export default function DevelopersPage() {
   return (
@@ -353,23 +352,7 @@ def request_purchase(amount, category, ...):
         </section>
       </div>
 
-      <footer className="border-t py-8">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 text-sm text-muted-foreground">
-          <span>
-            LetAgentPay &copy; {new Date().getFullYear()}
-            <VersionLink className="ml-2 text-xs opacity-40" />
-          </span>
-          <div className="flex gap-4">
-            <Link href="/about" className="hover:text-foreground">
-              About
-            </Link>
-            <Link href="/developers" className="hover:text-foreground">
-              Developers
-            </Link>
-            <SupportLink className="hover:text-foreground" />
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
