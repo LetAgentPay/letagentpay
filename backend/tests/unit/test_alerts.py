@@ -31,7 +31,7 @@ class TestHealthAlerts:
     async def test_healthy_does_not_alert(self, client):
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch("app.database.async_session", _mock_healthy_session()),
         ):
@@ -44,7 +44,7 @@ class TestHealthAlerts:
     async def test_postgres_failure_sends_alert(self, client):
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch("app.main._health_alert_cooldown", {}),
             patch("app.database.async_session", _mock_failing_session()),
@@ -61,7 +61,7 @@ class TestHealthAlerts:
 
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch("app.main._health_alert_cooldown", {}),
             patch("app.database.async_session", _mock_healthy_session()),
@@ -80,7 +80,7 @@ class TestHealthAlerts:
 
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch("app.main._health_alert_cooldown", cooldown),
             patch("app.database.async_session", _mock_healthy_session()),
@@ -96,7 +96,7 @@ class TestHealthAlerts:
 
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch("app.main._health_alert_cooldown", cooldown),
             patch("app.database.async_session", _mock_healthy_session()),
@@ -110,7 +110,7 @@ class TestHealthAlerts:
 
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch("app.main._health_alert_cooldown", {}),
             patch("app.database.async_session", _mock_failing_session()),
@@ -233,7 +233,7 @@ class TestUnhandledExceptionAlert:
 
         with (
             patch(
-                "app.main.send_alert_notification", new_callable=AsyncMock
+                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
             ) as mock_alert,
             patch(
                 "app.routers.me._account_response",

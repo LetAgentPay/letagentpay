@@ -11,8 +11,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.redis import close_redis, init_redis
+from app.services import telegram as _telegram
 from app.services.expiry import expire_pending_requests_loop
-from app.services.telegram import send_alert_notification
 from app.services.telegram import setup_webhook as setup_telegram_webhook
 from app.services.telegram import start_polling as start_telegram_polling
 
@@ -211,7 +211,7 @@ class ExceptionAlertMiddleware(BaseHTTPMiddleware):
                 "Unhandled exception on %s %s", request.method, request.url.path
             )
 
-            await send_alert_notification(
+            await _telegram.send_alert_notification(
                 f"💥 Unhandled exception\n"
                 f"{request.method} {request.url.path}\n"
                 f"{type(exc).__name__}: {exc}"
@@ -329,7 +329,7 @@ async def health():
             last_sent = _health_alert_cooldown.get(service, 0)
             if now - last_sent > _HEALTH_ALERT_INTERVAL:
                 _health_alert_cooldown[service] = now
-                await send_alert_notification(
+                await _telegram.send_alert_notification(
                     f"🚨 Health check FAILED: {service}\n{status}"
                 )
 
