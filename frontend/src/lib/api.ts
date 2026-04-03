@@ -60,11 +60,21 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
-  passwordLogin: (password: string) =>
-    request<{ message: string }>("/auth/login", {
+  passwordLogin: async (password: string) => {
+    // Call the Next.js Route Handler directly (not through /api/v1 rewrite)
+    // because the rewrite proxy doesn't forward Set-Cookie headers.
+    const res = await fetch("/auth/login", {
       method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
-    }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new ApiError(res.status, body.detail || res.statusText);
+    }
+    return res.json() as Promise<{ message: string }>;
+  },
 
   verify: (token: string) =>
     request<{ message: string; account_id: string }>(

@@ -160,8 +160,8 @@ export const handlers = [
     }),
   ),
 
-  // Password login
-  http.post(`${API}/auth/login`, () =>
+  // Password login (Route Handler at /auth/login, not through /api/v1 rewrite)
+  http.post("/auth/login", () =>
     HttpResponse.json({ message: "Authenticated" }),
   ),
 

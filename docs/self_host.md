@@ -33,6 +33,8 @@ docker compose up -d
 
 Open `http://localhost:3000` and log in with the specified password.
 
+> If deploying on a remote server (VPS), set `SITE_URL=http://<your-server-ip>:3000` in `.env` and open that address instead of localhost.
+
 ## Environment variables
 
 ### Required

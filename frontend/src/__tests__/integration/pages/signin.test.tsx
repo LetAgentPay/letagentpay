@@ -177,7 +177,7 @@ describe("SignInPage", () => {
         http.get("/api/v1/auth/mode", () =>
           HttpResponse.json({ mode: "password" }),
         ),
-        http.post("/api/v1/auth/login", async () => {
+        http.post("/auth/login", async () => {
           await new Promise((r) => setTimeout(r, 100));
           return HttpResponse.json({ message: "ok" });
         }),
@@ -194,7 +194,7 @@ describe("SignInPage", () => {
         http.get("/api/v1/auth/mode", () =>
           HttpResponse.json({ mode: "password" }),
         ),
-        http.post("/api/v1/auth/login", () =>
+        http.post("/auth/login", () =>
           HttpResponse.json({ detail: "Invalid password" }, { status: 401 }),
         ),
       );
@@ -210,7 +210,7 @@ describe("SignInPage", () => {
         http.get("/api/v1/auth/mode", () =>
           HttpResponse.json({ mode: "password" }),
         ),
-        http.post("/api/v1/auth/login", () => HttpResponse.error()),
+        http.post("/auth/login", () => HttpResponse.error()),
       );
       render(<SignInPage />);
       await user.type(await screen.findByPlaceholderText("Password"), "test");

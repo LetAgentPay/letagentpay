@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     # Telegram (notifications)
     telegram_bot_token: str = ""
     telegram_admin_chat_id: str = ""  # Internal monitoring: new signups etc.
+    telegram_alert_chat_id: str = ""  # Backup/monitoring alerts
 
 
 settings = Settings()

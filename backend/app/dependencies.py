@@ -1,3 +1,6 @@
+import asyncio
+import logging
+
 import jwt
 from fastapi import Depends, HTTPException, Request
 from jwt.exceptions import PyJWTError
@@ -9,12 +12,30 @@ from app.config import settings
 from app.database import get_db
 from app.models import Account, Agent
 
+logger = logging.getLogger(__name__)
+
+
+def _get_client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _fire_auth_alert(message: str) -> None:
+    """Send auth failure alert as a background task (fire-and-forget)."""
+    from app.services.telegram import send_alert_notification
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(send_alert_notification(message))
+    except RuntimeError:
+        pass
+
 
 async def get_current_account(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Account:
     """Extract account from JWT cookie."""
+    ip = _get_client_ip(request)
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -24,11 +45,17 @@ async def get_current_account(
         )
         account_id: str = payload["sub"]
     except (PyJWTError, KeyError):
+        logger.warning("Invalid JWT token from ip=%s", ip)
+        _fire_auth_alert(f"🔑 Invalid JWT token\nIP: {ip}")
         raise HTTPException(status_code=401, detail="Invalid token")
 
     result = await db.execute(select(Account).where(Account.id == account_id))
     account = result.scalar_one_or_none()
     if not account:
+        logger.warning("JWT references missing account=%s ip=%s", account_id, ip)
+        _fire_auth_alert(
+            f"🔑 JWT references missing account\nAccount: {account_id}\nIP: {ip}"
+        )
         raise HTTPException(status_code=401, detail="Account not found")
     if account.blocked:
         raise HTTPException(status_code=403, detail="Account is blocked")
@@ -49,6 +76,7 @@ async def get_agent_by_token(
     db: AsyncSession = Depends(get_db),
 ) -> Agent:
     """Extract agent from Bearer token (Agent API)."""
+    ip = _get_client_ip(request)
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
@@ -59,6 +87,9 @@ async def get_agent_by_token(
     )
     agent = result.scalar_one_or_none()
     if not agent:
+        token_preview = f"{token[:8]}..." if len(token) > 8 else token
+        logger.warning("Invalid agent token from ip=%s token=%s", ip, token_preview)
+        _fire_auth_alert(f"🤖 Invalid agent token\nIP: {ip}\nToken: {token_preview}")
         raise HTTPException(status_code=401, detail="Invalid agent token")
     if agent.account.blocked:
         raise HTTPException(status_code=403, detail="Account is blocked")

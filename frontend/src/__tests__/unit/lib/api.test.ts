@@ -258,7 +258,7 @@ describe("api", () => {
     it("passwordLogin sends password in body", async () => {
       let body: Record<string, unknown> = {};
       server.use(
-        http.post(`${API}/auth/login`, async ({ request }) => {
+        http.post("/auth/login", async ({ request }) => {
           body = (await request.json()) as Record<string, unknown>;
           return HttpResponse.json({ message: "ok" });
         }),

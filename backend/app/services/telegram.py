@@ -194,6 +194,17 @@ async def send_admin_notification(text: str) -> None:
     )
 
 
+async def send_alert_notification(text: str) -> None:
+    """Send a plain-text alert to the monitoring/backup alerts chat."""
+    if not settings.telegram_bot_token or not settings.telegram_alert_chat_id:
+        return
+
+    await _send_message(
+        chat_id=int(settings.telegram_alert_chat_id),
+        text=text,
+    )
+
+
 async def handle_telegram_update(update: dict, db: AsyncSession) -> None:
     """Process an incoming Telegram webhook update."""
     if "callback_query" in update:

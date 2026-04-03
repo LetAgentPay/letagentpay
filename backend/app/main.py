@@ -196,6 +196,36 @@ class SlidingSessionMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class ExceptionAlertMiddleware(BaseHTTPMiddleware):
+    """Catch unhandled exceptions, send Telegram alert, return 500."""
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            from fastapi.responses import JSONResponse
+
+            from app.services.telegram import send_alert_notification
+
+            _logger = logging.getLogger(__name__)
+            _logger.exception(
+                "Unhandled exception on %s %s", request.method, request.url.path
+            )
+
+            asyncio.create_task(
+                send_alert_notification(
+                    f"💥 Unhandled exception\n"
+                    f"{request.method} {request.url.path}\n"
+                    f"{type(exc).__name__}: {exc}"
+                )
+            )
+
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error"},
+            )
+
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(SlidingSessionMiddleware)
 
@@ -206,6 +236,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# Must be last (runs first) to catch exceptions from all other middlewares
+app.add_middleware(ExceptionAlertMiddleware)
+
 
 # Core routers — imported after app creation to avoid circular imports
 from app.routers import (  # noqa: E402
@@ -259,14 +293,22 @@ async def health_live():
     return {"status": "ok"}
 
 
+# Health alert cooldown: avoid spamming Telegram on every 10s health check
+_health_alert_cooldown: dict[str, float] = {}  # service -> last alert timestamp
+_HEALTH_ALERT_INTERVAL = 300  # 5 minutes between alerts per service
+
+
 @app.get("/health")
 async def health():
     """Readiness probe — checks PostgreSQL and Redis connectivity."""
+    import time
+
     from fastapi.responses import JSONResponse
     from sqlalchemy import text
 
     from app.database import async_session
     from app.redis import get_redis
+    from app.services.telegram import send_alert_notification
 
     checks: dict[str, str] = {}
 
@@ -283,6 +325,19 @@ async def health():
         checks["redis"] = "ok"
     except Exception as exc:
         checks["redis"] = f"error: {exc}"
+
+    # Send Telegram alerts for failed checks (with cooldown)
+    now = time.monotonic()
+    for service, status in checks.items():
+        if status != "ok":
+            last_sent = _health_alert_cooldown.get(service, 0)
+            if now - last_sent > _HEALTH_ALERT_INTERVAL:
+                _health_alert_cooldown[service] = now
+                asyncio.create_task(
+                    send_alert_notification(
+                        f"🚨 Health check FAILED: {service}\n{status}"
+                    )
+                )
 
     all_ok = all(v == "ok" for v in checks.values())
     return JSONResponse(

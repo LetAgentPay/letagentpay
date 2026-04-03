@@ -102,6 +102,9 @@ async def password_login(
 
     if not secrets.compare_digest(body.password, settings.admin_password):
         logger.warning("password login failed from ip=%s", ip)
+        from app.dependencies import _fire_auth_alert
+
+        _fire_auth_alert(f"🔒 Failed password login\nIP: {ip}")
         raise HTTPException(status_code=401, detail="Invalid password")
 
     email = "admin@localhost"

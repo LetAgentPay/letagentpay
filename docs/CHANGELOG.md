@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [1.0.16] - 2026-04-03
+
+### Added
+- Monitoring: Telegram alerts — auth failures, health check failures (Postgres/Redis) with 5-min cooldown, unhandled exceptions
+
+### Fixed
+- Auth: proxy password login through Route Handler to forward Set-Cookie in self-hosted mode
+- Docs: added SITE_URL note for VPS deployment
+
+### Improved
+- Config: cleaned up .env.example — removed SaaS-only keys; .env.saas.example is now self-sufficient
+
+## [1.0.15] - 2026-04-03
+
+### Fixed
+- Auth: revert debug error messages to user-friendly text
+
+## [1.0.14] - 2026-04-03
+
+### Fixed
+- Auth: show actual error message on auth connection failure for debugging
+
 ## [1.0.13] - 2026-04-03
 
 ### Fixed
