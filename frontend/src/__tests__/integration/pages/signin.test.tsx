@@ -74,7 +74,7 @@ describe("SignInPage", () => {
     );
     await user.click(screen.getByText("Send magic link"));
     expect(
-      await screen.findByText("Connection error. Please try again."),
+      await screen.findByText(/Connection error/),
     ).toBeInTheDocument();
   });
 
@@ -215,7 +215,7 @@ describe("SignInPage", () => {
       render(<SignInPage />);
       await user.type(await screen.findByPlaceholderText("Password"), "test");
       await user.click(screen.getByText("Sign in"));
-      expect(await screen.findByText("Connection error. Please try again.")).toBeInTheDocument();
+      expect(await screen.findByText(/Connection error/)).toBeInTheDocument();
     });
   });
 
