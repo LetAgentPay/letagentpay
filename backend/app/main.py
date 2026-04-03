@@ -211,7 +211,7 @@ class ExceptionAlertMiddleware(BaseHTTPMiddleware):
                 "Unhandled exception on %s %s", request.method, request.url.path
             )
 
-            await _telegram.send_alert_notification(
+            await _send_health_alert(
                 f"💥 Unhandled exception\n"
                 f"{request.method} {request.url.path}\n"
                 f"{type(exc).__name__}: {exc}"
@@ -295,6 +295,11 @@ _health_alert_cooldown: dict[str, float] = {}  # service -> last alert timestamp
 _HEALTH_ALERT_INTERVAL = 300  # 5 minutes between alerts per service
 
 
+async def _send_health_alert(message: str) -> None:
+    """Thin wrapper so tests can patch a locally-defined function."""
+    await _telegram.send_alert_notification(message)
+
+
 @app.get("/health")
 async def health():
     """Readiness probe — checks PostgreSQL and Redis connectivity."""
@@ -329,9 +334,7 @@ async def health():
             last_sent = _health_alert_cooldown.get(service, 0)
             if now - last_sent > _HEALTH_ALERT_INTERVAL:
                 _health_alert_cooldown[service] = now
-                await _telegram.send_alert_notification(
-                    f"🚨 Health check FAILED: {service}\n{status}"
-                )
+                await _send_health_alert(f"🚨 Health check FAILED: {service}\n{status}")
 
     all_ok = all(v == "ok" for v in checks.values())
     return JSONResponse(

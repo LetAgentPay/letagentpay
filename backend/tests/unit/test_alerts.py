@@ -30,9 +30,7 @@ def _mock_failing_session():
 class TestHealthAlerts:
     async def test_healthy_does_not_alert(self, client):
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch("app.database.async_session", _mock_healthy_session()),
         ):
             resp = await client.get("/health")
@@ -43,9 +41,7 @@ class TestHealthAlerts:
 
     async def test_postgres_failure_sends_alert(self, client):
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch("app.main._health_alert_cooldown", {}),
             patch("app.database.async_session", _mock_failing_session()),
         ):
@@ -60,9 +56,7 @@ class TestHealthAlerts:
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("connection refused"))
 
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch("app.main._health_alert_cooldown", {}),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
@@ -79,9 +73,7 @@ class TestHealthAlerts:
         cooldown = {"redis": time.monotonic()}
 
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch("app.main._health_alert_cooldown", cooldown),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
@@ -95,9 +87,7 @@ class TestHealthAlerts:
         cooldown = {"redis": time.monotonic() - 360}
 
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch("app.main._health_alert_cooldown", cooldown),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
@@ -109,9 +99,7 @@ class TestHealthAlerts:
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("redis down"))
 
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch("app.main._health_alert_cooldown", {}),
             patch("app.database.async_session", _mock_failing_session()),
         ):
@@ -232,9 +220,7 @@ class TestUnhandledExceptionAlert:
         client.cookies.set("access_token", token)
 
         with (
-            patch(
-                "app.services.telegram.send_alert_notification", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch(
                 "app.routers.me._account_response",
                 side_effect=RuntimeError("unexpected crash"),
