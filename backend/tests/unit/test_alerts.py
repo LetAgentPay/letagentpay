@@ -1,9 +1,11 @@
 """Tests for Telegram monitoring alerts (health, auth, unhandled exceptions)."""
 
 import time
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.config import settings
+from app.main import health as _health_func
 from tests.conftest import make_jwt
 
 
@@ -27,10 +29,25 @@ def _mock_failing_session():
     return mock_factory
 
 
+@contextmanager
+def _patch_health_globals(**overrides):
+    """Directly patch health().__globals__ to bypass potential module identity issues."""
+    g = _health_func.__globals__
+    originals = {k: g[k] for k in overrides if k in g}
+    g.update(overrides)
+    try:
+        yield
+    finally:
+        for k in overrides:
+            if k in originals:
+                g[k] = originals[k]
+
+
 class TestHealthAlerts:
     async def test_healthy_does_not_alert(self, client):
+        mock_alert = AsyncMock()
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
+            _patch_health_globals(_send_health_alert=mock_alert),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
             resp = await client.get("/health")
@@ -40,9 +57,11 @@ class TestHealthAlerts:
         mock_alert.assert_not_called()
 
     async def test_postgres_failure_sends_alert(self, client):
+        mock_alert = AsyncMock()
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
-            patch("app.main._health_alert_cooldown", {}),
+            _patch_health_globals(
+                _send_health_alert=mock_alert, _health_alert_cooldown={}
+            ),
             patch("app.database.async_session", _mock_failing_session()),
         ):
             resp = await client.get("/health")
@@ -54,10 +73,12 @@ class TestHealthAlerts:
 
     async def test_redis_failure_sends_alert(self, client, mock_redis):
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("connection refused"))
+        mock_alert = AsyncMock()
 
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
-            patch("app.main._health_alert_cooldown", {}),
+            _patch_health_globals(
+                _send_health_alert=mock_alert, _health_alert_cooldown={}
+            ),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
             resp = await client.get("/health")
@@ -69,12 +90,14 @@ class TestHealthAlerts:
 
     async def test_cooldown_prevents_repeated_alerts(self, client, mock_redis):
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("down"))
+        mock_alert = AsyncMock()
 
         cooldown = {"redis": time.monotonic()}
 
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
-            patch("app.main._health_alert_cooldown", cooldown),
+            _patch_health_globals(
+                _send_health_alert=mock_alert, _health_alert_cooldown=cooldown
+            ),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
             await client.get("/health")
@@ -83,12 +106,14 @@ class TestHealthAlerts:
 
     async def test_cooldown_allows_alert_after_interval(self, client, mock_redis):
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("down"))
+        mock_alert = AsyncMock()
 
         cooldown = {"redis": time.monotonic() - 360}
 
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
-            patch("app.main._health_alert_cooldown", cooldown),
+            _patch_health_globals(
+                _send_health_alert=mock_alert, _health_alert_cooldown=cooldown
+            ),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
             await client.get("/health")
@@ -97,10 +122,12 @@ class TestHealthAlerts:
 
     async def test_both_services_down_sends_two_alerts(self, client, mock_redis):
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("redis down"))
+        mock_alert = AsyncMock()
 
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
-            patch("app.main._health_alert_cooldown", {}),
+            _patch_health_globals(
+                _send_health_alert=mock_alert, _health_alert_cooldown={}
+            ),
             patch("app.database.async_session", _mock_failing_session()),
         ):
             resp = await client.get("/health")
@@ -219,8 +246,9 @@ class TestUnhandledExceptionAlert:
         token = make_jwt(account.id, account.email)
         client.cookies.set("access_token", token)
 
+        mock_alert = AsyncMock()
         with (
-            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
+            _patch_health_globals(_send_health_alert=mock_alert),
             patch(
                 "app.routers.me._account_response",
                 side_effect=RuntimeError("unexpected crash"),
