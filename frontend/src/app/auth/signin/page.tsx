@@ -14,9 +14,8 @@ type AuthMode = "magic_link" | "password" | null;
 
 function authError(err: unknown): string {
   if (err instanceof ApiError) return err.detail;
-  const msg = err instanceof Error ? err.message : String(err);
-  console.error("Auth error:", msg, err);
-  return `Connection error: ${msg}`;
+  console.error("Auth error:", err);
+  return "Connection error. Please try again.";
 }
 
 export default function SignInPage() {
@@ -34,10 +33,7 @@ export default function SignInPage() {
   const submittingRef = useRef(false);
 
   useEffect(() => {
-    api.authMode().then((res) => setAuthMode(res.mode)).catch((err) => {
-      console.error("authMode failed:", err);
-      setAuthMode("magic_link");
-    });
+    api.authMode().then((res) => setAuthMode(res.mode)).catch(() => setAuthMode("magic_link"));
   }, []);
 
   async function handleMagicLink(e: React.FormEvent) {
