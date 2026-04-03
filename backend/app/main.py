@@ -312,12 +312,10 @@ async def _check_health_alerts(
     now = time.monotonic()
     for service, status in checks.items():
         if status != "ok":
-            last_sent = cooldown.get(service, 0)
+            last_sent = cooldown.get(service, -_HEALTH_ALERT_INTERVAL - 1)
             if now - last_sent > _HEALTH_ALERT_INTERVAL:
                 cooldown[service] = now
-                await _send_health_alert(
-                    f"🚨 Health check FAILED: {service}\n{status}"
-                )
+                await _send_health_alert(f"🚨 Health check FAILED: {service}\n{status}")
 
 
 @app.get("/health")

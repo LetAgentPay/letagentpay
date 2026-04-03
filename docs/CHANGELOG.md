@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.0.25] - 2026-04-04
+
+### Fixed
+- Monitoring: health alert cooldown used default 0, causing alerts to be skipped on fresh CI runners where time.monotonic() < 300s
+
 ## [1.0.16] - 2026-04-03
 
 ### Added

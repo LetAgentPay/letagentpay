@@ -247,9 +247,7 @@ class TestUnhandledExceptionAlert:
         client.cookies.set("access_token", token)
 
         with (
-            patch(
-                "app.main._send_health_alert", new_callable=AsyncMock
-            ) as mock_alert,
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
             patch(
                 "app.routers.me._account_response",
                 side_effect=RuntimeError("unexpected crash"),
