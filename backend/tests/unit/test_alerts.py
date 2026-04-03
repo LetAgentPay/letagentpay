@@ -4,6 +4,7 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.config import settings
+from app.main import _check_health_alerts
 from tests.conftest import make_jwt
 
 
@@ -27,8 +28,10 @@ def _mock_failing_session():
     return mock_factory
 
 
-class TestHealthAlerts:
-    async def test_healthy_does_not_alert(self, client):
+class TestHealthEndpoint:
+    """Test that /health endpoint correctly detects service status."""
+
+    async def test_healthy_returns_ok(self, client):
         mock_check = AsyncMock()
         with (
             patch("app.main._check_health_alerts", mock_check),
@@ -39,81 +42,97 @@ class TestHealthAlerts:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
         mock_check.assert_called_once()
-        checks_arg = mock_check.call_args[0][0]
-        assert checks_arg["postgres"] == "ok"
+        assert mock_check.call_args[0][0]["postgres"] == "ok"
 
-    async def test_postgres_failure_sends_alert(self, client):
-        mock_alert = AsyncMock()
+    async def test_postgres_failure_returns_503(self, client):
+        mock_check = AsyncMock()
         with (
-            patch("app.main._send_health_alert", mock_alert),
-            patch("app.main._health_alert_cooldown", {}),
+            patch("app.main._check_health_alerts", mock_check),
             patch("app.database.async_session", _mock_failing_session()),
         ):
             resp = await client.get("/health")
 
         assert resp.status_code == 503
         assert resp.json()["checks"]["postgres"].startswith("error:")
-        mock_alert.assert_called_once()
-        assert "postgres" in mock_alert.call_args[0][0].lower()
+        mock_check.assert_called_once()
+        assert mock_check.call_args[0][0]["postgres"].startswith("error:")
 
-    async def test_redis_failure_sends_alert(self, client, mock_redis):
-        mock_redis.ping = AsyncMock(side_effect=ConnectionError("connection refused"))
-        mock_alert = AsyncMock()
-
+    async def test_redis_failure_returns_503(self, client, mock_redis):
+        mock_redis.ping = AsyncMock(side_effect=ConnectionError("refused"))
+        mock_check = AsyncMock()
         with (
-            patch("app.main._send_health_alert", mock_alert),
-            patch("app.main._health_alert_cooldown", {}),
+            patch("app.main._check_health_alerts", mock_check),
             patch("app.database.async_session", _mock_healthy_session()),
         ):
             resp = await client.get("/health")
 
         assert resp.status_code == 503
         assert resp.json()["checks"]["redis"].startswith("error:")
-        mock_alert.assert_called_once()
-        assert "redis" in mock_alert.call_args[0][0].lower()
 
-    async def test_cooldown_prevents_repeated_alerts(self, client, mock_redis):
+    async def test_both_down_returns_503(self, client, mock_redis):
         mock_redis.ping = AsyncMock(side_effect=ConnectionError("down"))
-        mock_alert = AsyncMock()
-
-        cooldown = {"redis": time.monotonic()}
-
+        mock_check = AsyncMock()
         with (
-            patch("app.main._send_health_alert", mock_alert),
-            patch("app.main._health_alert_cooldown", cooldown),
-            patch("app.database.async_session", _mock_healthy_session()),
-        ):
-            await client.get("/health")
-
-        mock_alert.assert_not_called()
-
-    async def test_cooldown_allows_alert_after_interval(self, client, mock_redis):
-        mock_redis.ping = AsyncMock(side_effect=ConnectionError("down"))
-        mock_alert = AsyncMock()
-
-        cooldown = {"redis": time.monotonic() - 360}
-
-        with (
-            patch("app.main._send_health_alert", mock_alert),
-            patch("app.main._health_alert_cooldown", cooldown),
-            patch("app.database.async_session", _mock_healthy_session()),
-        ):
-            await client.get("/health")
-
-        mock_alert.assert_called_once()
-
-    async def test_both_services_down_sends_two_alerts(self, client, mock_redis):
-        mock_redis.ping = AsyncMock(side_effect=ConnectionError("redis down"))
-        mock_alert = AsyncMock()
-
-        with (
-            patch("app.main._send_health_alert", mock_alert),
-            patch("app.main._health_alert_cooldown", {}),
+            patch("app.main._check_health_alerts", mock_check),
             patch("app.database.async_session", _mock_failing_session()),
         ):
             resp = await client.get("/health")
 
         assert resp.status_code == 503
+        checks = mock_check.call_args[0][0]
+        assert checks["postgres"].startswith("error:")
+        assert checks["redis"].startswith("error:")
+
+
+class TestHealthAlerts:
+    """Test _check_health_alerts logic directly (no HTTP)."""
+
+    async def test_sends_alert_on_failure(self):
+        mock_alert = AsyncMock()
+        with patch("app.main._send_health_alert", mock_alert):
+            await _check_health_alerts(
+                {"postgres": "error: connection refused"},
+                cooldown={},
+            )
+        mock_alert.assert_called_once()
+        assert "postgres" in mock_alert.call_args[0][0].lower()
+
+    async def test_no_alert_when_healthy(self):
+        mock_alert = AsyncMock()
+        with patch("app.main._send_health_alert", mock_alert):
+            await _check_health_alerts(
+                {"postgres": "ok", "redis": "ok"},
+                cooldown={},
+            )
+        mock_alert.assert_not_called()
+
+    async def test_cooldown_prevents_repeated_alerts(self):
+        mock_alert = AsyncMock()
+        cooldown = {"redis": time.monotonic()}
+        with patch("app.main._send_health_alert", mock_alert):
+            await _check_health_alerts(
+                {"redis": "error: down"},
+                cooldown=cooldown,
+            )
+        mock_alert.assert_not_called()
+
+    async def test_cooldown_allows_alert_after_interval(self):
+        mock_alert = AsyncMock()
+        cooldown = {"redis": time.monotonic() - 360}
+        with patch("app.main._send_health_alert", mock_alert):
+            await _check_health_alerts(
+                {"redis": "error: down"},
+                cooldown=cooldown,
+            )
+        mock_alert.assert_called_once()
+
+    async def test_both_services_down_sends_two_alerts(self):
+        mock_alert = AsyncMock()
+        with patch("app.main._send_health_alert", mock_alert):
+            await _check_health_alerts(
+                {"postgres": "error: refused", "redis": "error: down"},
+                cooldown={},
+            )
         assert mock_alert.call_count == 2
         alert_texts = [call[0][0].lower() for call in mock_alert.call_args_list]
         assert any("postgres" in t for t in alert_texts)

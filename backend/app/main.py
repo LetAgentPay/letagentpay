@@ -300,16 +300,21 @@ async def _send_health_alert(message: str) -> None:
     await _telegram.send_alert_notification(message)
 
 
-async def _check_health_alerts(checks: dict[str, str]) -> None:
+async def _check_health_alerts(
+    checks: dict[str, str],
+    cooldown: dict[str, float] | None = None,
+) -> None:
     """Send Telegram alerts for failed health checks (with cooldown)."""
     import time
 
+    if cooldown is None:
+        cooldown = _health_alert_cooldown
     now = time.monotonic()
     for service, status in checks.items():
         if status != "ok":
-            last_sent = _health_alert_cooldown.get(service, 0)
+            last_sent = cooldown.get(service, 0)
             if now - last_sent > _HEALTH_ALERT_INTERVAL:
-                _health_alert_cooldown[service] = now
+                cooldown[service] = now
                 await _send_health_alert(
                     f"🚨 Health check FAILED: {service}\n{status}"
                 )
