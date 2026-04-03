@@ -300,11 +300,24 @@ async def _send_health_alert(message: str) -> None:
     await _telegram.send_alert_notification(message)
 
 
+async def _check_health_alerts(checks: dict[str, str]) -> None:
+    """Send Telegram alerts for failed health checks (with cooldown)."""
+    import time
+
+    now = time.monotonic()
+    for service, status in checks.items():
+        if status != "ok":
+            last_sent = _health_alert_cooldown.get(service, 0)
+            if now - last_sent > _HEALTH_ALERT_INTERVAL:
+                _health_alert_cooldown[service] = now
+                await _send_health_alert(
+                    f"🚨 Health check FAILED: {service}\n{status}"
+                )
+
+
 @app.get("/health")
 async def health():
     """Readiness probe — checks PostgreSQL and Redis connectivity."""
-    import time
-
     from fastapi.responses import JSONResponse
     from sqlalchemy import text
 
@@ -327,14 +340,7 @@ async def health():
     except Exception as exc:
         checks["redis"] = f"error: {exc}"
 
-    # Send Telegram alerts for failed checks (with cooldown)
-    now = time.monotonic()
-    for service, status in checks.items():
-        if status != "ok":
-            last_sent = _health_alert_cooldown.get(service, 0)
-            if now - last_sent > _HEALTH_ALERT_INTERVAL:
-                _health_alert_cooldown[service] = now
-                await _send_health_alert(f"🚨 Health check FAILED: {service}\n{status}")
+    await _check_health_alerts(checks)
 
     all_ok = all(v == "ok" for v in checks.values())
     return JSONResponse(
