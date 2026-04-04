@@ -68,8 +68,17 @@ async def lifespan(app: FastAPI):
             )
             result = await rebuild_all_counters()
             logging.getLogger(__name__).info("Redis rebuild complete: %s", result)
-    except Exception:
+    except Exception as exc:
         logging.getLogger(__name__).exception("Failed to auto-rebuild Redis counters")
+        try:
+            from app.services.telegram import send_alert_notification
+
+            await send_alert_notification(
+                f"🚨 Startup error: Redis rebuild failed\n"
+                f"{type(exc).__name__}: {exc}"
+            )
+        except Exception:
+            pass
 
     expiry_task = asyncio.create_task(expire_pending_requests_loop())
 

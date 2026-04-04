@@ -114,4 +114,4 @@ Be respectful and constructive. We're building something useful together.
 
 ## Questions?
 
-Open a [discussion](https://github.com/letagentpay/letagentpay/discussions) or an issue.
+Open an [issue](https://github.com/letagentpay/letagentpay/issues) — we're happy to help.
