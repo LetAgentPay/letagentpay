@@ -181,16 +181,17 @@ sdk-js/                      # TypeScript SDK (npm install letagentpay)
 openclaw-skill/              # OpenClaw skill
 ```
 
-## Framework Integrations
+## Integrations
 
-LetAgentPay works with popular AI agent frameworks out of the box:
+LetAgentPay works with popular AI agent frameworks and platforms out of the box:
 
-| Framework | How | Example |
-|-----------|-----|---------|
+| Platform | How | Example |
+|----------|-----|---------|
+| **OpenClaw** | Skill for Claude Code agents | [OpenClaw skill](openclaw-skill/) |
+| **Claude MCP** | MCP server (`npx letagentpay-mcp`) | [MCP docs](docs/mcp_server.md) |
 | **LangChain** | Custom tool (`BaseTool`) | [langchain_tool.py](examples/langchain_tool.py) |
 | **OpenAI Agents SDK** | Function tool (`@function_tool`) | [openai_agents.py](examples/openai_agents.py) |
 | **CrewAI** | CrewAI tool (`@tool`) | [crewai_agent.py](examples/crewai_agent.py) |
-| **Claude MCP** | MCP server (`npx letagentpay-mcp`) | [MCP docs](docs/mcp_server.md) |
 
 Each integration is a thin wrapper around the [Python SDK](docs/python_sdk.md) or [TypeScript SDK](docs/typescript_sdk.md) — your agent calls `request_purchase()` before spending, and LetAgentPay enforces the policy.
 
@@ -205,7 +206,7 @@ See [docs/integrations/](docs/integrations/) for detailed guides.
 - [Python SDK](docs/python_sdk.md)
 - [TypeScript SDK](docs/typescript_sdk.md)
 - [Budget Rules](docs/budget_rules.md)
-- [Framework Integrations](docs/integrations/) — LangChain, OpenAI Agents, CrewAI
+- [Integrations](docs/integrations/) — OpenClaw, Claude MCP, LangChain, OpenAI Agents, CrewAI
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](docs/CHANGELOG.md)
 
