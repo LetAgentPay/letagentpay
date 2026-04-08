@@ -1,18 +1,31 @@
 {
   "name": "letagentpay-mcp",
   "version": "0.1.0",
-  "description": "MCP server for LetAgentPay — manage AI agent purchases",
+  "description": "MCP server for LetAgentPay — AI agent spending policy middleware",
   "main": "index.js",
   "bin": {
     "letagentpay-mcp": "./index.js"
   },
   "type": "module",
+  "files": [
+    "index.js",
+    "server.js"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "keywords": ["mcp", "letagentpay", "ai-agent", "purchases"],
+  "keywords": ["mcp", "letagentpay", "ai-agent", "purchases", "budget", "policy", "openclaw", "claude"],
+  "author": "LetAgentPay <hello@letagentpay.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LetAgentPay/letagentpay-mcp"
+  },
+  "homepage": "https://letagentpay.com",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"
   },

@@ -75,7 +75,24 @@ elif result.status == "pending":
     ...
 ```
 
-### Option C — HTTP API
+### Option C — TypeScript SDK
+
+```bash
+npm install letagentpay
+```
+
+```typescript
+import { LetAgentPay } from "letagentpay";
+
+const client = new LetAgentPay({ token: "agt_xxx" });
+const result = await client.requestPurchase({
+  amount: 15.0,
+  category: "subscriptions",
+  description: "OpenAI GPT-4 API call",
+});
+```
+
+### Option D — HTTP API
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/agent-api/requests \
@@ -160,6 +177,8 @@ frontend/
 │   └── lib/                 # API client, types, hooks
 mcp-server/                  # MCP server (npx letagentpay-mcp)
 sdk/                         # Python SDK (pip install letagentpay)
+sdk-js/                      # TypeScript SDK (npm install letagentpay)
+openclaw-skill/              # OpenClaw skill
 ```
 
 ## Framework Integrations
@@ -173,7 +192,7 @@ LetAgentPay works with popular AI agent frameworks out of the box:
 | **CrewAI** | CrewAI tool (`@tool`) | [crewai_agent.py](examples/crewai_agent.py) |
 | **Claude MCP** | MCP server (`npx letagentpay-mcp`) | [MCP docs](docs/mcp_server.md) |
 
-Each integration is a thin wrapper around the [Python SDK](docs/python_sdk.md) — your agent calls `request_purchase()` before spending, and LetAgentPay enforces the policy.
+Each integration is a thin wrapper around the [Python SDK](docs/python_sdk.md) or [TypeScript SDK](docs/typescript_sdk.md) — your agent calls `request_purchase()` before spending, and LetAgentPay enforces the policy.
 
 See [docs/integrations/](docs/integrations/) for detailed guides.
 
@@ -184,6 +203,7 @@ See [docs/integrations/](docs/integrations/) for detailed guides.
 - [Architecture](docs/architecture.md)
 - [MCP Server](docs/mcp_server.md)
 - [Python SDK](docs/python_sdk.md)
+- [TypeScript SDK](docs/typescript_sdk.md)
 - [Budget Rules](docs/budget_rules.md)
 - [Framework Integrations](docs/integrations/) — LangChain, OpenAI Agents, CrewAI
 - [Contributing](CONTRIBUTING.md)

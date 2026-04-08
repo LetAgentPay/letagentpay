@@ -15,8 +15,9 @@ LetAgentPay lets humans define spending policies (budgets, category limits, sche
 
 ## Integration Options
 
-- **Python SDK**: \`pip install letagentpay\` — simplest integration
-- **MCP Server**: Native integration for Claude Desktop, Cursor, Windsurf
+- **Python SDK**: \`pip install letagentpay\` — Python integration
+- **TypeScript SDK**: \`npm install letagentpay\` — JS/TS integration
+- **MCP Server**: \`npx letagentpay-mcp\` — Claude Desktop, Cursor, OpenClaw
 - **REST API**: Direct HTTP calls for any language/framework
 - **LangChain**: Custom tool (BaseTool) — see examples/langchain_tool.py
 - **OpenAI Agents SDK**: Function tool (@function_tool) — see examples/openai_agents.py

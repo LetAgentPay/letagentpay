@@ -14,3 +14,10 @@ python_version = "3.14"
 check_untyped_defs = true
 ignore_missing_imports = true
 exclude = [".venv", "alembic", "tests"]
+
+[tool.bandit]
+exclude_dirs = [".venv", "tests", "alembic"]
+# B101: assert used in tests; B105: false positives on JWT check string & Lua scripts;
+# B110: try/except/pass is intentional for best-effort notifications;
+# B311: random.choice for non-security playground presets
+skips = ["B101", "B105", "B110", "B311"]

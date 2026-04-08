@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.0.38] - 2026-04-07
+
+### Added
+- CI: bandit (Python SAST), pip-audit, npm audit, gitleaks added to CI pipeline
+
+### Fixed
+- Security: upgraded anthropic 0.86.0 → 0.91.0 (CVE-2026-34450, CVE-2026-34452)
+- Security: fixed vite vulnerabilities (path traversal, fs.deny bypass, WebSocket file read)
+
+## [1.0.37] - 2026-04-07
+
+### Added
+- OpenClaw integration — TypeScript SDK, MCP server update, skill, documentation
+- ASPS (Agent Spending Policy Specification) v0.1 draft
+
+## [1.0.36] - 2026-04-06
+
+- Enterprise version improvements
+
 ## [1.0.35] - 2026-04-06
 
 - Enterprise version improvements

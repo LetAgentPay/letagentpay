@@ -22,7 +22,7 @@ async function connect(apiCall) {
 
 describe("MCP Server", () => {
   describe("tool registration", () => {
-    it("registers all 5 tools", async () => {
+    it("registers all 6 tools", async () => {
       const apiCall = vi.fn();
       const { client } = await connect(apiCall);
 
@@ -33,6 +33,7 @@ describe("MCP Server", () => {
         "check_budget",
         "confirm_purchase",
         "list_categories",
+        "list_requests",
         "my_requests",
         "request_purchase",
       ]);
@@ -153,6 +154,35 @@ describe("MCP Server", () => {
 
       expect(apiCall).toHaveBeenCalledWith("/requests/req_123");
       expect(JSON.parse(result.content[0].text)).toEqual(mockRequest);
+    });
+  });
+
+  describe("list_requests", () => {
+    it("lists requests without filters", async () => {
+      const mockList = { requests: [], total: 0, limit: 20, offset: 0 };
+      const apiCall = vi.fn().mockResolvedValue(mockList);
+      const { client } = await connect(apiCall);
+
+      const result = await client.callTool({
+        name: "list_requests",
+        arguments: {},
+      });
+
+      expect(apiCall).toHaveBeenCalledWith("/requests");
+      expect(JSON.parse(result.content[0].text)).toEqual(mockList);
+    });
+
+    it("passes status filter as query param", async () => {
+      const mockList = { requests: [{ id: "req_1" }], total: 1, limit: 20, offset: 0 };
+      const apiCall = vi.fn().mockResolvedValue(mockList);
+      const { client } = await connect(apiCall);
+
+      await client.callTool({
+        name: "list_requests",
+        arguments: { status: "pending", limit: 5 },
+      });
+
+      expect(apiCall).toHaveBeenCalledWith("/requests?status=pending&limit=5");
     });
   });
 

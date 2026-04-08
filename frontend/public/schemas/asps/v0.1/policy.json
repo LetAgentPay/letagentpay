@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://letagentpay.com/schemas/asps/v0.1/policy.json",
+  "title": "Agent Spending Policy (ASPS v0.1)",
+  "description": "Vendor-neutral JSON format for describing spending rules for autonomous AI agents.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Spec version.",
+      "const": "0.1"
+    },
+    "daily_limit": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Maximum spending per calendar day."
+    },
+    "weekly_limit": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Maximum spending per ISO week (Mon–Sun)."
+    },
+    "monthly_limit": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Maximum spending per calendar month."
+    },
+    "per_request_limit": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Maximum amount for a single request."
+    },
+    "allowed_categories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_:]*$"
+      },
+      "uniqueItems": true,
+      "description": "Whitelist of categories. If set, only these categories are allowed."
+    },
+    "blocked_categories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_:]*$"
+      },
+      "uniqueItems": true,
+      "description": "Blacklist of categories. Ignored if allowed_categories is set."
+    },
+    "schedule": {
+      "$ref": "#/$defs/Schedule"
+    },
+    "auto_approve": {
+      "$ref": "#/$defs/AutoApprove"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary key-value pairs for implementation-specific extensions."
+    }
+  },
+  "$defs": {
+    "TimeWindow": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d-([01]\\d|2[0-3]):[0-5]\\d$",
+      "description": "Time window in HH:MM-HH:MM format (24-hour). Overnight windows supported (e.g. 22:00-06:00)."
+    },
+    "DayAbbreviation": {
+      "type": "string",
+      "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    },
+    "ScheduleOverride": {
+      "type": "object",
+      "required": ["days"],
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DayAbbreviation" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Days of the week this override applies to."
+        },
+        "allow": {
+          "$ref": "#/$defs/TimeWindow",
+          "description": "Time window override. Replaces default."
+        },
+        "deny": {
+          "type": "boolean",
+          "description": "If true, all spending is denied on these days. Overrides allow."
+        },
+        "daily_limit": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Override daily limit for these days."
+        }
+      }
+    },
+    "Schedule": {
+      "type": "object",
+      "required": ["timezone"],
+      "additionalProperties": false,
+      "properties": {
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone (e.g. America/New_York)."
+        },
+        "default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "$ref": "#/$defs/TimeWindow",
+              "description": "Default time window for all days."
+            }
+          }
+        },
+        "overrides": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ScheduleOverride" },
+          "description": "Day-specific overrides."
+        }
+      }
+    },
+    "AutoApprove": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether auto-approval is active."
+        },
+        "max_amount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum amount eligible for auto-approval."
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_:]*$"
+          },
+          "uniqueItems": true,
+          "description": "Only these categories are eligible for auto-approval."
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "required": ["amount", "currency", "category", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Requested amount."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217 currency code."
+        },
+        "category": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_:]*$",
+          "description": "Spending category."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable description of the purchase."
+        },
+        "idempotency_key": {
+          "type": "string",
+          "description": "Client-generated key to prevent duplicate requests."
+        }
+      }
+    },
+    "CheckResult": {
+      "type": "object",
+      "required": ["rule", "result", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "type": "string",
+          "description": "Rule identifier (e.g. status, category, daily_limit, budget, account_budget:Rule Name)."
+        },
+        "result": {
+          "type": "string",
+          "enum": ["pass", "fail"],
+          "description": "Check outcome."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Human-readable explanation."
+        }
+      }
+    },
+    "BudgetRule": {
+      "type": "object",
+      "required": ["name", "limit_type", "limit_amount"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable rule name."
+        },
+        "limit_type": {
+          "type": "string",
+          "enum": ["daily", "weekly", "monthly", "total"],
+          "description": "Type of limit period."
+        },
+        "limit_amount": {
+          "type": "number",
+          "minimum": 0,
+          "description": "The spending limit."
+        },
+        "days_of_week": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6
+          },
+          "uniqueItems": true,
+          "description": "Days when rule applies (0=Monday, 6=Sunday). null = all days."
+        },
+        "start_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Rule active from (ISO 8601)."
+        },
+        "end_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Rule active until (ISO 8601)."
+        },
+        "priority": {
+          "type": "integer",
+          "default": 0,
+          "description": "Conflict resolution: higher wins. Equal priority → strictest wins."
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the rule is currently enforced."
+        }
+      }
+    }
+  }
+}

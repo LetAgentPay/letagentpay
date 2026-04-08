@@ -96,6 +96,27 @@ export function createServer(apiCall) {
   );
 
   server.tool(
+    "list_requests",
+    "List agent's purchase requests with optional status filter.",
+    {
+      status: z.string().optional().describe("Filter by status: pending, auto_approved, approved, rejected, expired, completed, failed"),
+      limit: z.number().optional().describe("Max results to return (default 20, max 100)"),
+      offset: z.number().optional().describe("Offset for pagination (default 0)"),
+    },
+    async ({ status, limit, offset }) => {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (limit != null) params.set("limit", String(limit));
+      if (offset != null) params.set("offset", String(offset));
+      const query = params.toString();
+      const result = await apiCall(`/requests${query ? `?${query}` : ""}`);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
     "confirm_purchase",
     "Confirm that a purchase was completed (or failed). Call after an approved request.",
     {

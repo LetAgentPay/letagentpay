@@ -77,6 +77,19 @@ Gets the status of a specific purchase request by ID.
 
 **Returns:** request details (id, status, amount, category, timestamps).
 
+### list_requests
+
+Lists the agent's purchase requests with optional filters.
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `status` | string | No | Filter by status (pending, auto_approved, approved, rejected, expired, completed, failed) |
+| `limit` | number | No | Max results (default 20, max 100) |
+| `offset` | number | No | Pagination offset (default 0) |
+
+**Returns:** paginated list of requests with totals.
+
 ### confirm_purchase
 
 Confirms the purchase result after approval. The agent reports whether the purchase was completed successfully.
@@ -111,7 +124,7 @@ Configuration file: `~/Library/Application Support/Claude/claude_desktop_config.
 }
 ```
 
-After saving the config, restart Claude Desktop. The agent will gain access to the tools `request_purchase`, `check_budget`, `list_categories`, `my_requests`, `confirm_purchase`.
+After saving the config, restart Claude Desktop. The agent will gain access to the tools `request_purchase`, `check_budget`, `list_categories`, `my_requests`, `list_requests`, `confirm_purchase`.
 
 ### OpenClaw
 
@@ -139,5 +152,5 @@ mcp-server/
 ## Related Documents
 
 - [Agent API Reference](agent_api_reference.md) -- full API description
-- [Python SDK](python_sdk.md) -- alternative connection method
-- [Customer Journey Map](customer_journey_map.md) -- Stage 5 (agent connection)
+- [Python SDK](python_sdk.md) -- Python SDK
+- [TypeScript SDK](typescript_sdk.md) -- TypeScript SDK

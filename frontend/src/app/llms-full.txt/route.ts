@@ -178,6 +178,46 @@ def buy_groceries(items: list[str]) -> dict:
     return {"items": items, "total": total}
 \`\`\`
 
+## TypeScript SDK
+
+\`\`\`bash
+npm install letagentpay
+\`\`\`
+
+\`\`\`typescript
+import { LetAgentPay } from "letagentpay";
+
+const client = new LetAgentPay({ token: "agt_your_token" });
+
+const result = await client.requestPurchase({
+  amount: 49.99,
+  category: "groceries",
+  merchantName: "Whole Foods",
+  description: "Weekly groceries",
+});
+
+if (result.status === "auto_approved") {
+  await client.confirmPurchase(result.requestId, { success: true, actualAmount: 47.50 });
+} else if (result.status === "pending") {
+  console.log("Waiting for approval...");
+}
+
+const budget = await client.checkBudget();
+console.log(\`Remaining: $\${budget.remaining}\`);
+\`\`\`
+
+### guard() Wrapper
+
+\`\`\`typescript
+import { guard } from "letagentpay";
+
+const buyGroceries = guard(
+  async (items: string[], total: number) => ({ items, total }),
+  { token: "agt_your_token", category: "groceries" }
+);
+// Automatically checks policy before execution
+\`\`\`
+
 ## MCP Server
 
 For Claude Desktop, add to \`claude_desktop_config.json\`:
@@ -187,7 +227,7 @@ For Claude Desktop, add to \`claude_desktop_config.json\`:
   "mcpServers": {
     "letagentpay": {
       "command": "npx",
-      "args": ["-y", "@anthropic/letagentpay-mcp"],
+      "args": ["-y", "letagentpay-mcp"],
       "env": {
         "LETAGENTPAY_TOKEN": "agt_your_token"
       }
@@ -203,7 +243,7 @@ For Cursor, add to \`.cursor/mcp.json\`:
   "mcpServers": {
     "letagentpay": {
       "command": "npx",
-      "args": ["-y", "@anthropic/letagentpay-mcp"],
+      "args": ["-y", "letagentpay-mcp"],
       "env": {
         "LETAGENTPAY_TOKEN": "agt_your_token"
       }
@@ -212,7 +252,7 @@ For Cursor, add to \`.cursor/mcp.json\`:
 }
 \`\`\`
 
-Available MCP tools: \`purchase_request\`, \`check_request_status\`, \`confirm_purchase\`, \`get_budget\`, \`get_policy\`, \`list_categories\`.
+Available MCP tools: \`request_purchase\`, \`check_budget\`, \`list_categories\`, \`my_requests\`, \`list_requests\`, \`confirm_purchase\`.
 
 ## REST API (curl)
 
