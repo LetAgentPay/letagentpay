@@ -90,6 +90,12 @@ jobs:
       - name: Build backend image
         run: docker build -t letagentpay-backend backend/
 
+      - name: Copy spec docs for frontend build
+        run: |
+          mkdir -p frontend/public/asps
+          cp docs/agent_spending_policy_spec.md frontend/public/asps/v1-spec.md
+          cp docs/mission_policy_spec.md frontend/public/asps/v2-spec.md
+
       - name: Build frontend image
         run: docker build -t letagentpay-frontend frontend/
 

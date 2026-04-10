@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-04-10
+
+### Fixed
+- Docker: CI now copies spec markdown files into frontend before Docker build (both public and enterprise workflows)
+
 ## [1.2.1] - 2026-04-10
 
 ### Fixed
