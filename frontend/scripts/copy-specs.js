@@ -4,8 +4,8 @@
  * Source of truth: docs/core/docs/*.md (monorepo)
  * After sync_repos.sh: docs/*.md (public repo)
  *
- * Tries both paths — monorepo first, then public repo layout.
- * Build-time copies are gitignored.
+ * If files already exist in public/asps/ (e.g. copied by CI before Docker build),
+ * they are NOT overwritten.
  */
 const fs = require("fs");
 const path = require("path");
@@ -34,8 +34,14 @@ if (!fs.existsSync(outDir)) {
 
 for (const { name, candidates } of specs) {
   const destPath = path.join(outDir, name);
-  let found = false;
 
+  // Skip if already present (CI pre-copied before Docker build)
+  if (fs.existsSync(destPath) && fs.statSync(destPath).size > 200) {
+    console.log(`Skipping ${name} — already exists (${fs.statSync(destPath).size} bytes)`);
+    continue;
+  }
+
+  let found = false;
   for (const candidate of candidates) {
     const srcPath = path.join(__dirname, "..", candidate);
     if (fs.existsSync(srcPath)) {

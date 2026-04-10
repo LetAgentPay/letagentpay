@@ -11,7 +11,7 @@ ASPS v1 defines a vendor-neutral JSON format for describing spending rules for a
 
 ASPS is not tied to a specific payment provider or AI framework. It works with Stripe, Visa, Google AP2, LangChain, CrewAI, OpenClaw, or any other system. LetAgentPay is the reference implementation.
 
-For multi-agent coordination (shared budgets, phases, dependencies), see [ASPS v2: Mission Policy](mission_policy_spec.md).
+For multi-agent coordination (shared budgets, phases, dependencies), see [ASPS v2: Mission Policy](/asps/v2).
 
 ## 1. Design Principles
 

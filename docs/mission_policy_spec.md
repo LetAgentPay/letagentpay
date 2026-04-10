@@ -3,7 +3,7 @@
 **Version:** 2.0-draft
 **Status:** Draft
 **Date:** 2026-04-09
-**Extends:** [ASPS v1: Agent Spending Policy](agent_spending_policy_spec.md)
+**Extends:** [ASPS v1: Agent Spending Policy](/asps/spec)
 
 ## Abstract
 

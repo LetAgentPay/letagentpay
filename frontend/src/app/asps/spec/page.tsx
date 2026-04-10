@@ -1,4 +1,5 @@
 import { readFile } from "fs/promises";
+import { existsSync } from "fs";
 import { join } from "path";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -15,8 +16,15 @@ export const metadata: Metadata = {
 };
 
 async function getSpecContent(): Promise<string> {
-  const specPath = join(process.cwd(), "public", "asps", "v1-spec.md");
-  return readFile(specPath, "utf-8");
+  const candidates = [
+    join(process.cwd(), "public", "asps", "v1-spec.md"),
+    join(process.cwd(), "..", "docs", "core", "docs", "agent_spending_policy_spec.md"),
+    join(process.cwd(), "..", "docs", "agent_spending_policy_spec.md"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return readFile(p, "utf-8");
+  }
+  return "# Specification not available\n\nMarkdown source not found.";
 }
 
 export default async function AspsSpecPage() {

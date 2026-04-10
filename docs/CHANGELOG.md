@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-04-10
+
+### Fixed
+- Docker: prebuild script no longer overwrites pre-copied spec files with placeholders inside Docker container
+
 ## [1.2.2] - 2026-04-10
 
 ### Fixed
