@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-04-10
+
+### Fixed
+- Docker: ASPS spec pages failed to build — markdown files were outside Docker context. Prebuild script now copies specs into public/asps/
+
 ## [1.2.0] - 2026-04-10
 
 ### Added

@@ -15,14 +15,7 @@ export const metadata: Metadata = {
 };
 
 async function getSpecContent(): Promise<string> {
-  const specPath = join(
-    process.cwd(),
-    "..",
-    "docs",
-    "core",
-    "docs",
-    "agent_spending_policy_spec.md",
-  );
+  const specPath = join(process.cwd(), "public", "asps", "v1-spec.md");
   return readFile(specPath, "utf-8");
 }
 

@@ -1,6 +1,6 @@
 // CACHE_VERSION is bumped on each build via the build script.
 // Changing CACHE_NAME triggers activate → deletes old caches → forces fresh content.
-const CACHE_VERSION = "1775806382035";
+const CACHE_VERSION = "1775820940350";
 const CACHE_NAME = `letagentpay-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = ["/auth/signin"];
