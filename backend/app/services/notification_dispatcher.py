@@ -13,7 +13,7 @@ from app.models import NotificationChannel, NotificationLog
 from app.services.action_tokens import ActionTokens, create_action_tokens
 from app.services.email_notify import send_pending_request_email
 from app.services.push import send_push_to_account
-from app.utils import utcnow
+from app.utils import ensure_utc, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ async def _dispatch_notification_impl(
     # Generate action tokens once, shared across all channels.
     # Derive TTL from request expires_at when available, fall back to account setting.
     if event.expires_at:
-        ttl = max(int((event.expires_at - utcnow()).total_seconds()), 60)
+        ttl = max(int((ensure_utc(event.expires_at) - utcnow()).total_seconds()), 60)
     else:
         ttl = event.account_expiry_minutes * 60
     action_tokens = await create_action_tokens(redis, account_id, event.request_id, ttl)

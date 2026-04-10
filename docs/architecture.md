@@ -125,6 +125,22 @@ When a request is `pending`, the amount is **held** (reserved). This prevents mu
 - `approved` → held -= amount, spent += amount
 - `rejected/expired` → held -= amount (funds released)
 
+## Policy Management
+
+There are two ways to configure an agent's spending policy:
+
+### AI Chat (natural language)
+The default flow on the **Setup Policy** page. The user describes rules in plain English (e.g. "limit to $200/day, only groceries and transport"), Claude converts it to a structured JSON policy, and the user confirms.
+
+- Backend: `POST /api/v1/agents/{id}/policy/ai` → AI preview, `POST .../ai/confirm` → save
+- Iterative: the user can refine the policy through follow-up messages
+
+### Manual Editor
+The **Manual** tab on the same page. Provides a form with fields for all policy parameters (limits, categories, auto-approve) and a toggle to switch to a raw JSON editor for advanced users.
+
+- Backend: `PUT /api/v1/agents/{id}/policy` → direct JSON update
+- Both modes share the same policy schema (see [Agent Spending Policy Spec](agent_spending_policy_spec.md))
+
 ## Two Authentication Paths
 
 ### Dashboard (human users)

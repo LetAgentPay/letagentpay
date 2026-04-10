@@ -105,6 +105,41 @@ export default function RootLayout({
             }),
           }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: "Home",
+                  item: siteUrl,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: "About",
+                  item: `${siteUrl}/about`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: "Developers",
+                  item: `${siteUrl}/developers`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 4,
+                  name: "ASPS Specification",
+                  item: `${siteUrl}/asps`,
+                },
+              ],
+            }),
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

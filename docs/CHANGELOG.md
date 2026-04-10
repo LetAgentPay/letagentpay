@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-10
+
+### Added
+- ASPS v1 specification finalized (status: Stable) — formalized from existing policy engine implementation
+- ASPS v2: Mission Policy specification (status: Draft) — multi-agent coordination with shared budgets, phases, dynamic allocation, constraints, escalation, competitive allocation, risk scoring
+- ASPS v1 JSON Schema published at `/schemas/asps/v0.1/policy.json`
+- Website: `/asps` landing page with v1/v2 overview and architecture diagram
+- Website: `/asps/spec` renders v1 spec directly from markdown (single source of truth)
+- Website: `/asps/v2` renders Mission Policy spec from markdown
+- Website: `/asps/use-cases` — 5 visual use cases with diagrams (travel, incident response, marketing, procurement, customer service)
+- Markdown renderer component (react-markdown + remark-gfm + rehype-slug)
+- Policy editor extracted into reusable component with tests
+- SEO: dynamic `sitemap.xml` with all public pages
+- SEO: `robots.txt` with crawl rules (disallow dashboard, auth/verify, api)
+- SEO: BreadcrumbList JSON-LD in root layout for SERP navigation
+- SEO: Article JSON-LD on About page, TechArticle JSON-LD on ASPS v1 Specification page
+
+### Fixed
+- Timezone-aware datetime comparisons with asyncpg — `ensure_utc()` helper prevents TypeError on naive vs aware datetime in expiry checks
+- SEO: Sign In page marked `noindex` — excluded from search indexing
+- SEO: added metadata for 404 page (title + noindex)
+
 ## [1.1.1] - 2026-04-08
 
 ### Fixed

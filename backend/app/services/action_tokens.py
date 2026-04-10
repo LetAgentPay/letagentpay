@@ -14,7 +14,7 @@ from app.services.request_actions import (
     approve_purchase_request,
     reject_purchase_request,
 )
-from app.utils import utcnow
+from app.utils import ensure_utc, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ async def execute_action_token(
             message=f"Request has already been {req.status}.",
         )
 
-    if req.expires_at < utcnow():
+    if ensure_utc(req.expires_at) < utcnow():
         return ActionResult(
             success=False,
             action=action,

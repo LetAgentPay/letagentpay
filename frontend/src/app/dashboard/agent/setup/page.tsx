@@ -1,11 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatContainer } from "@/components/chat/chat-container";
+import { PolicyEditor } from "@/components/policy-editor";
 import { api, ApiError } from "@/lib/api";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, Policy } from "@/lib/types";
 import { toast } from "sonner";
 import { track } from "@/lib/ee-hooks";
 import { useAuth } from "@/lib/auth-context";
@@ -26,6 +28,28 @@ function AgentSetupContent() {
   ]);
   const [loading, setLoading] = useState(false);
   const [hasPreview, setHasPreview] = useState(false);
+
+  // Manual editor state
+  const [currentPolicy, setCurrentPolicy] = useState<Policy | null>(null);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const loadPolicy = useCallback(async () => {
+    if (!agentId) return;
+    setPolicyLoading(true);
+    try {
+      const agent = await api.getAgent(agentId);
+      setCurrentPolicy(agent.policy || {});
+    } catch {
+      setCurrentPolicy({});
+    } finally {
+      setPolicyLoading(false);
+    }
+  }, [agentId]);
+
+  useEffect(() => {
+    loadPolicy();
+  }, [loadPolicy]);
 
   if (!agentId) {
     return (
@@ -72,8 +96,7 @@ function AgentSetupContent() {
       await api.confirmAiPolicy(agentId!);
       track("policy_confirmed", { agent_id: agentId });
       toast.success("Policy confirmed!");
-      const returnTo = searchParams.get("return");
-      router.push(returnTo === "sandbox" ? "/dashboard/sandbox" : "/dashboard");
+      navigateBack();
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.detail : "Failed to confirm policy",
@@ -83,18 +106,65 @@ function AgentSetupContent() {
     }
   }
 
+  async function handleManualSave(policy: Policy) {
+    setSaving(true);
+    try {
+      await api.updatePolicy(agentId!, policy as Record<string, unknown>);
+      track("policy_manual_update", { agent_id: agentId });
+      toast.success("Policy saved!");
+      navigateBack();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.detail : "Failed to save policy",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function navigateBack() {
+    const returnTo = searchParams.get("return");
+    router.push(returnTo === "sandbox" ? "/dashboard/sandbox" : "/dashboard");
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Setup Policy</h2>
-        {hasPreview && (
-          <Button size="lg" onClick={handleConfirm} disabled={loading}>
-            <Check className="mr-2 h-4 w-4" />
-            Confirm Policy
-          </Button>
-        )}
-      </div>
-      <ChatContainer messages={messages} currency={currency} onSend={handleSend} loading={loading} />
+      <h2 className="text-xl font-bold">Setup Policy</h2>
+      <Tabs defaultValue="chat">
+        <TabsList>
+          <TabsTrigger value="chat">AI Chat</TabsTrigger>
+          <TabsTrigger value="manual">Manual</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chat">
+          <div className="space-y-4">
+            {hasPreview && (
+              <div className="flex justify-end">
+                <Button size="lg" onClick={handleConfirm} disabled={loading}>
+                  <Check className="mr-2 h-4 w-4" />
+                  Confirm Policy
+                </Button>
+              </div>
+            )}
+            <ChatContainer messages={messages} currency={currency} onSend={handleSend} loading={loading} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="manual">
+          {policyLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : currentPolicy !== null ? (
+            <PolicyEditor
+              policy={currentPolicy}
+              currency={currency}
+              onSave={handleManualSave}
+              saving={saving}
+            />
+          ) : null}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

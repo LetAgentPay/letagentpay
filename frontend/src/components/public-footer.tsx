@@ -17,6 +17,9 @@ export function PublicFooter() {
           <Link href="/developers" className="hover:text-foreground">
             Developers
           </Link>
+          <Link href="/asps" className="hover:text-foreground">
+            ASPS
+          </Link>
           <SupportLink className="hover:text-foreground" />
         </div>
       </div>

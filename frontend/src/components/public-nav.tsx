@@ -17,6 +17,7 @@ import { usePublicConfig } from "@/lib/hooks/use-public-config";
 const BASE_NAV_LINKS = [
   { href: "/about", label: "About" },
   { href: "/developers", label: "Developers" },
+  { href: "/asps", label: "ASPS" },
 ];
 
 export function PublicNav() {

@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
+    "@tailwindcss/typography": "^0.5.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.513.0",
@@ -22,6 +23,10 @@
     "posthog-js": "^1.363.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
     "shadcn": "^4.0.8",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",

@@ -4,6 +4,8 @@ import { PublicNav } from "@/components/public-nav";
 import { SupportLink } from "@/components/support-link";
 import { PublicFooter } from "@/components/public-footer";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://letagentpay.com";
+
 export const metadata: Metadata = {
   title: "About",
   description:
@@ -14,6 +16,25 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background">
       <PublicNav />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: "About LetAgentPay",
+            description:
+              "LetAgentPay is a policy middleware for AI agents — set budgets, define spending rules, and approve purchases before they happen.",
+            url: `${siteUrl}/about`,
+            publisher: {
+              "@type": "Organization",
+              name: "LetAgentPay",
+              url: siteUrl,
+            },
+          }),
+        }}
+      />
 
       <article className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="text-3xl font-bold">About LetAgentPay</h1>

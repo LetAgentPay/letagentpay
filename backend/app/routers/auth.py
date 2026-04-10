@@ -21,7 +21,7 @@ from app.schemas import (
 )
 from app.services.rate_limit import check_rate_limit
 from app.services.telegram import send_admin_notification
-from app.utils import utcnow
+from app.utils import ensure_utc, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +192,7 @@ async def send_magic_link(
         )
     else:
         # Dev mode: log the link and OTP
-        logger.debug("OTP for %s: %s | Magic link: %s", email, otp_code, magic_link)
+        logger.info("OTP for %s: %s | Magic link: %s", email, otp_code, magic_link)
 
     return TokenResponse(message="Magic link sent to your email")
 
@@ -219,7 +219,7 @@ async def verify_magic_link(
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     now = utcnow()
-    if vt.expires_at < now:
+    if ensure_utc(vt.expires_at) < now:
         logger.warning("verify: token expired for email=%s", vt.email)
         await db.delete(vt)
         await db.commit()
@@ -260,7 +260,7 @@ async def verify_otp(
     if not vt:
         raise HTTPException(status_code=400, detail="Invalid or expired code")
 
-    if vt.expires_at < utcnow():
+    if ensure_utc(vt.expires_at) < utcnow():
         await db.delete(vt)
         await db.commit()
         raise HTTPException(status_code=400, detail="Code expired")

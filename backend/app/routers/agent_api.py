@@ -40,7 +40,7 @@ from app.services.spending import (
     remove_account_held,
     remove_held,
 )
-from app.utils import clamp_zero, utcnow
+from app.utils import clamp_zero, ensure_utc, utcnow
 
 router = APIRouter(prefix="/api/v1/agent-api", tags=["agent-api"])
 
@@ -498,7 +498,7 @@ async def get_request_status(
         raise HTTPException(status_code=404, detail="Request not found")
 
     # Check expiry — release hold if expired
-    if req.status == "pending" and req.expires_at < utcnow():
+    if req.status == "pending" and ensure_utc(req.expires_at) < utcnow():
         req.status = "expired"
         await db.execute(
             update(Agent)

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Sign In",
   description: "Sign in to LetAgentPay to manage your AI agent spending policies.",
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Sign In | LetAgentPay",
     description: "Sign in to LetAgentPay to manage your AI agent spending policies.",

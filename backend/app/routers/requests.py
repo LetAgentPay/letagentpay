@@ -13,7 +13,7 @@ from app.services.request_actions import (
     reject_purchase_request,
 )
 from app.services.spending import remove_account_held, remove_held
-from app.utils import clamp_zero, utcnow
+from app.utils import clamp_zero, ensure_utc, utcnow
 
 router = APIRouter(prefix="/api/v1", tags=["requests"])
 
@@ -148,7 +148,7 @@ async def approve_request(
         raise HTTPException(status_code=404, detail="Request not found")
     if req.status != "pending":
         raise HTTPException(status_code=400, detail=f"Request is already {req.status}")
-    if req.expires_at < utcnow():
+    if ensure_utc(req.expires_at) < utcnow():
         req.status = "expired"
         # Release hold on expiry
         await db.execute(

@@ -1,15 +1,17 @@
 # Agent Spending Policy Specification (ASPS)
 
-**Version:** 0.1.0-draft
-**Status:** Draft
+**Version:** 1.0
+**Status:** Stable
 **Authors:** LetAgentPay contributors
-**Date:** 2026-04-08
+**Date:** 2026-04-09
 
 ## Abstract
 
-Agent Spending Policy Specification (ASPS) defines a vendor-neutral JSON format for describing spending rules for autonomous AI agents. Any system that gives an AI agent the ability to spend money can use ASPS to express what the agent is allowed to do — and any policy engine can evaluate requests against these rules.
+ASPS v1 defines a vendor-neutral JSON format for describing spending rules for a single AI agent. It covers budgets, limits, categories, schedules, auto-approval, and account-level budget rules.
 
-ASPS is designed to work with any payment provider (Stripe, Visa, Google AP2, etc.) and any AI agent framework (LangChain, CrewAI, OpenClaw, etc.).
+ASPS is not tied to a specific payment provider or AI framework. It works with Stripe, Visa, Google AP2, LangChain, CrewAI, OpenClaw, or any other system. LetAgentPay is the reference implementation.
+
+For multi-agent coordination (shared budgets, phases, dependencies), see [ASPS v2: Mission Policy](mission_policy_spec.md).
 
 ## 1. Design Principles
 
@@ -38,7 +40,7 @@ A Policy is a JSON object. All fields are optional. Omitted fields impose no res
 
 ```json
 {
-  "version": "0.1",
+  "version": "1.0",
   "daily_limit": 500.00,
   "weekly_limit": 2000.00,
   "monthly_limit": 5000.00,
@@ -74,13 +76,18 @@ A Policy is a JSON object. All fields are optional. Omitted fields impose no res
 
 ### 3.3 Category semantics
 
+- Each request carries exactly **one category** (a single string). If a purchase spans multiple domains, the agent or application selects the primary category
 - Categories are lowercase strings, underscore-separated (e.g. `food_delivery`)
-- If `allowed_categories` is set, it takes precedence over `blocked_categories`
-- A request with a category not in `allowed_categories` is rejected
-- A request with a category in `blocked_categories` is rejected
-- If neither list is set, all categories are allowed
+- Categories are **user-defined** — the specification does not mandate a fixed set. Each application chooses categories that fit its domain
+- The specification treats categories as opaque strings. A conforming engine does not validate whether a category value is "known" — it only checks membership in `allowed_categories` / `blocked_categories`
 
-**Standard categories** (implementations MAY extend):
+**Evaluation rules:**
+- If `allowed_categories` is set, it takes precedence over `blocked_categories`. A request with a category **not** in the list is rejected
+- If only `blocked_categories` is set, a request with a category **in** the list is rejected. All other categories are allowed
+- If neither list is set, all categories are allowed
+- A category not present in either list is implicitly allowed (unless `allowed_categories` is set, which acts as a whitelist)
+
+**Example categories** (as used by LetAgentPay):
 
 ```
 accommodation, clothing, education, electronics, entertainment,
@@ -286,9 +293,9 @@ Request → Agent Policy Checks (1-8)
 
 The `metadata` field in the Policy object allows implementations to add custom fields without breaking compatibility. Conforming engines MUST ignore unknown metadata keys.
 
-### 12.2 Custom categories
+### 12.2 Categories
 
-Implementations MAY define additional categories beyond the standard set. Custom categories SHOULD use a namespace prefix (e.g. `custom:office_supplies`).
+Categories are user-defined strings. There is no fixed set mandated by the specification. Implementations define whatever categories fit their domain.
 
 ### 12.3 Custom check rules
 
@@ -305,7 +312,7 @@ The schema defines all objects: `Policy` (root), `Schedule`, `ScheduleOverride`,
 
 ```json
 {
-  "version": "0.1",
+  "version": "1.0",
   "daily_limit": 500.00,
   "weekly_limit": 2000.00,
   "monthly_limit": 5000.00,
