@@ -34,6 +34,11 @@ export function EESettingsSection(_props: {
   return null;
 }
 
+// Public nav — no extra links in core
+export function getEEPublicLinks(): { href: string; label: string }[] {
+  return [];
+}
+
 // Dashboard nav — no admin nav in core
 export function getEENavItems(
   _isAdmin: boolean,

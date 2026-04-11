@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { SupportLink } from "@/components/support-link";
 import { usePublicConfig } from "@/lib/hooks/use-public-config";
+import { getEEPublicLinks } from "@/lib/ee-hooks";
 
 const BASE_NAV_LINKS = [
   { href: "/about", label: "About" },
@@ -25,8 +26,11 @@ export function PublicNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { playground_enabled } = usePublicConfig();
 
+  const eeLinks = getEEPublicLinks();
   const NAV_LINKS = [
-    ...BASE_NAV_LINKS,
+    BASE_NAV_LINKS[0],
+    ...eeLinks,
+    ...BASE_NAV_LINKS.slice(1),
     ...(playground_enabled
       ? [{ href: "/playground", label: "Playground" }]
       : []),

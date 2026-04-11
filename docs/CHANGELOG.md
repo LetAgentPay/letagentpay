@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- Extension point `getEEPublicLinks()` in ee-hooks for enterprise navigation links
+
+### Fixed
+- Footer now shows the same links as the navigation bar (added Playground)
+- Enterprise version improvements
+
 ## [1.2.3] - 2026-04-10
 
 ### Fixed
