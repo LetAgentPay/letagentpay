@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "prebuild": "node -e \"const fs=require('fs');fs.writeFileSync('public/sw.js',fs.readFileSync('public/sw.template.js','utf8').replace('__BUILD_TIMESTAMP__',Date.now()))\" && node scripts/copy-specs.js",
+    "prebuild": "node -e \"const fs=require('fs');fs.writeFileSync('public/sw.js',fs.readFileSync('public/sw.template.js','utf8').replace('__BUILD_TIMESTAMP__',Date.now()))\" && node scripts/copy-specs.js && node scripts/copy-blog.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src/",

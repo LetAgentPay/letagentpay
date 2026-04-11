@@ -25,3 +25,6 @@ next-env.d.ts
 # build-time copies of spec files (source of truth: docs/core/docs/)
 public/asps/v1-spec.md
 public/asps/v2-spec.md
+
+# build-time copies of blog posts (source of truth: docs/internal/blog/)
+public/blog/
