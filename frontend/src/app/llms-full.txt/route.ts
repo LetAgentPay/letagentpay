@@ -293,6 +293,118 @@ LetAgentPay integrates with popular AI agent frameworks via thin wrappers around
 
 Each integration follows the same pattern: wrap \`client.request_purchase()\` as a native tool for the framework.
 
+## x402 Payment Authorization
+
+LetAgentPay acts as a policy middleware for x402 crypto-micropayments. Agents ask LAP for authorization before making on-chain payments. LAP checks policies, budgets, and limits — but never touches private keys or funds.
+
+### Base URL
+
+\`\`\`
+\${siteUrl}/api/v1/x402
+\`\`\`
+
+### POST /authorize — Request Payment Authorization
+
+Agent receives HTTP 402 from a resource and asks LAP: "can I pay?"
+
+**Request:**
+\`\`\`json
+{
+  "payment_requirements": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "50000",
+    "asset": "USDC",
+    "pay_to": "0xRecipient...",
+    "resource": "https://api.example.com/data"
+  },
+  "max_amount_usd": 0.05,
+  "category": "api"
+}
+\`\`\`
+
+**Response (authorized):**
+\`\`\`json
+{
+  "authorized": true,
+  "authorization_id": "uuid",
+  "expires_at": "2026-04-13T12:01:00Z",
+  "remaining_daily_budget": 49.95,
+  "remaining_monthly_budget": 499.95
+}
+\`\`\`
+
+**Response (declined):**
+\`\`\`json
+{
+  "authorized": false,
+  "reason": "DAILY_BUDGET_EXCEEDED"
+}
+\`\`\`
+
+Decline reasons: CHAIN_NOT_ALLOWED, DOMAIN_BLOCKED, DOMAIN_NOT_ALLOWED, CATEGORY_NOT_ALLOWED, CATEGORY_BLOCKED, AMOUNT_EXCEEDS_PER_REQUEST_LIMIT, DAILY_BUDGET_EXCEEDED, WEEKLY_BUDGET_EXCEEDED, MONTHLY_BUDGET_EXCEEDED, BUDGET_EXCEEDED, STABLECOIN_DEPEG.
+
+### POST /report — Report Completed Transaction
+
+After paying, agent reports tx_hash for audit.
+
+**Request:**
+\`\`\`json
+{
+  "authorization_id": "uuid",
+  "tx_hash": "0xabc123...",
+  "actual_amount_usd": 0.05
+}
+\`\`\`
+
+### GET /budget — x402 Budget State
+
+Returns x402-specific budget info including wallet addresses and allowed chains/domains.
+
+### POST /wallets — Register Wallet
+
+Register an agent wallet address (reference only — LAP never holds keys).
+
+**Request:**
+\`\`\`json
+{
+  "wallet_address": "0x1234...",
+  "chain": "base",
+  "wallet_provider": "coinbase"
+}
+\`\`\`
+
+### POST /wallets/create — Auto-Create Wallet via CDP
+
+Creates a new wallet via Coinbase Developer Platform and registers it automatically. Requires CDP credentials on the server.
+
+### x402 Flow
+
+1. Agent receives HTTP 402 from resource server
+2. Agent calls \`POST /x402/authorize\` — LAP checks policy → authorized/declined
+3. Agent signs tx with own wallet → pays → gets resource
+4. Agent calls \`POST /x402/report\` with tx_hash for audit
+
+### Python SDK (x402)
+
+\`\`\`python
+from letagentpay import LetAgentPay
+
+client = LetAgentPay(token="agt_your_token")
+
+auth = client.x402.authorize(
+    amount_usd=0.05,
+    asset="USDC",
+    network="eip155:84532",
+    pay_to="0xRecipient",
+    resource_url="https://api.example.com/data",
+)
+
+if auth.authorized:
+    # Agent signs and pays with own wallet...
+    client.x402.report(auth.authorization_id, tx_hash="0xabc123...")
+\`\`\`
+
 ## Error Handling
 
 | Status | Meaning |

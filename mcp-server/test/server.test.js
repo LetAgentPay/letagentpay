@@ -3,16 +3,16 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer, createApiClient } from "../server.js";
 
-function setup(apiCall) {
-  const server = createServer(apiCall);
+function setup(apiCall, x402Call) {
+  const server = createServer({ apiCall, x402Call: x402Call || vi.fn() });
   const client = new Client({ name: "test-client", version: "1.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
   return { server, client, clientTransport, serverTransport };
 }
 
-async function connect(apiCall) {
-  const { server, client, clientTransport, serverTransport } = setup(apiCall);
+async function connect(apiCall, x402Call) {
+  const { server, client, clientTransport, serverTransport } = setup(apiCall, x402Call);
   await Promise.all([
     server.server.connect(serverTransport),
     client.connect(clientTransport),
@@ -22,7 +22,7 @@ async function connect(apiCall) {
 
 describe("MCP Server", () => {
   describe("tool registration", () => {
-    it("registers all 6 tools", async () => {
+    it("registers all 9 tools", async () => {
       const apiCall = vi.fn();
       const { client } = await connect(apiCall);
 
@@ -36,6 +36,9 @@ describe("MCP Server", () => {
         "list_requests",
         "my_requests",
         "request_purchase",
+        "x402_authorize",
+        "x402_budget",
+        "x402_report",
       ]);
     });
 
@@ -248,7 +251,7 @@ describe("MCP Server", () => {
         json: () => Promise.resolve(mockData),
       });
 
-      const apiCall = createApiClient("agt_test123", "https://api.example.com/api/v1");
+      const { apiCall } = createApiClient("agt_test123", "https://api.example.com/api/v1");
       const result = await apiCall("/budget");
 
       expect(fetch).toHaveBeenCalledWith(
@@ -263,6 +266,27 @@ describe("MCP Server", () => {
       expect(result).toEqual(mockData);
     });
 
+    it("x402Call uses /x402 prefix", async () => {
+      const mockData = { authorized: true };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockData),
+      });
+
+      const { x402Call } = createApiClient("agt_test123", "https://api.example.com/api/v1");
+      const result = await x402Call("/authorize", { method: "POST", body: "{}" });
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.example.com/api/v1/x402/authorize",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer agt_test123",
+          }),
+        }),
+      );
+      expect(result).toEqual(mockData);
+    });
+
     it("throws on API error with detail message", async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
@@ -270,7 +294,7 @@ describe("MCP Server", () => {
         json: () => Promise.resolve({ detail: "Token expired" }),
       });
 
-      const apiCall = createApiClient("agt_bad", "https://api.example.com/api/v1");
+      const { apiCall } = createApiClient("agt_bad", "https://api.example.com/api/v1");
 
       await expect(apiCall("/budget")).rejects.toThrow("Token expired");
     });
@@ -282,9 +306,103 @@ describe("MCP Server", () => {
         json: () => Promise.resolve({}),
       });
 
-      const apiCall = createApiClient("agt_bad", "https://api.example.com/api/v1");
+      const { apiCall } = createApiClient("agt_bad", "https://api.example.com/api/v1");
 
       await expect(apiCall("/budget")).rejects.toThrow("API error: 500");
+    });
+  });
+
+  describe("x402 tools", () => {
+    it("x402_authorize sends correct payload", async () => {
+      const apiCall = vi.fn();
+      const x402Call = vi.fn().mockResolvedValue({
+        authorized: true,
+        authorization_id: "auth_123",
+        expires_at: "2026-04-13T12:01:00Z",
+        remaining_daily_budget: 49.95,
+        remaining_monthly_budget: 499.95,
+      });
+      const { client } = await connect(apiCall, x402Call);
+
+      const result = await client.callTool({
+        name: "x402_authorize",
+        arguments: {
+          amount_usd: 0.05,
+          pay_to: "0xRecipient",
+          resource_url: "https://api.example.com/data",
+        },
+      });
+
+      expect(x402Call).toHaveBeenCalledWith("/authorize", expect.objectContaining({
+        method: "POST",
+      }));
+      expect(result.content[0].text).toContain("Authorized");
+      expect(result.content[0].text).toContain("auth_123");
+    });
+
+    it("x402_authorize shows decline reason", async () => {
+      const apiCall = vi.fn();
+      const x402Call = vi.fn().mockResolvedValue({
+        authorized: false,
+        reason: "DAILY_BUDGET_EXCEEDED",
+      });
+      const { client } = await connect(apiCall, x402Call);
+
+      const result = await client.callTool({
+        name: "x402_authorize",
+        arguments: { amount_usd: 100, pay_to: "0xRecipient" },
+      });
+
+      expect(result.content[0].text).toBe("Declined: DAILY_BUDGET_EXCEEDED");
+    });
+
+    it("x402_report sends tx_hash", async () => {
+      const apiCall = vi.fn();
+      const x402Call = vi.fn().mockResolvedValue({
+        recorded: true,
+        transaction_id: "txn_456",
+      });
+      const { client } = await connect(apiCall, x402Call);
+
+      const result = await client.callTool({
+        name: "x402_report",
+        arguments: {
+          authorization_id: "auth_123",
+          tx_hash: "0xabc123",
+        },
+      });
+
+      expect(x402Call).toHaveBeenCalledWith("/report", expect.objectContaining({
+        method: "POST",
+      }));
+      expect(result.content[0].text).toContain("txn_456");
+    });
+
+    it("x402_budget returns formatted info", async () => {
+      const apiCall = vi.fn();
+      const x402Call = vi.fn().mockResolvedValue({
+        budget: "1000.00",
+        spent: "50.00",
+        remaining: "950.00",
+        x402_policy: {
+          daily_spent: "10.00",
+          daily_limit: "100",
+          monthly_spent: "50.00",
+          monthly_limit: "500",
+          allowed_chains: ["base", "base-sepolia"],
+        },
+        wallets: [{ chain: "base", address: "0xWallet" }],
+      });
+      const { client } = await connect(apiCall, x402Call);
+
+      const result = await client.callTool({
+        name: "x402_budget",
+        arguments: {},
+      });
+
+      expect(result.content[0].text).toContain("Budget: $1000.00");
+      expect(result.content[0].text).toContain("base, base-sepolia");
+      expect(result.content[0].text).toContain("0xWallet");
     });
   });
 });

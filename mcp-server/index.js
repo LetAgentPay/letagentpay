@@ -11,8 +11,8 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-const apiCall = createApiClient(TOKEN, API_URL);
-const server = createServer(apiCall);
+const { apiCall, x402Call } = createApiClient(TOKEN, API_URL);
+const server = createServer({ apiCall, x402Call });
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

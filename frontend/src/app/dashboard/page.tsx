@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useAgentEvents } from "@/lib/hooks/use-agent-events";
 import type { AgentResponse } from "@/lib/types";
 import { SpendingSummary } from "@/components/spending-summary";
+import { X402Stats } from "@/components/x402-stats";
 import { Settings, Plus, Link as LinkIcon, AlertTriangle, Circle, Pause } from "lucide-react";
 import Link from "next/link";
 
@@ -314,6 +315,8 @@ export default function DashboardPage() {
           )}
 
           <SpendingSummary agentId={selectedAgent.id} currency={currency} refreshKey={refreshKey} />
+
+          <X402Stats agentId={selectedAgent.id} refreshKey={refreshKey} />
 
           {selectedAgent.policy && (
             <div className="flex items-center justify-between">

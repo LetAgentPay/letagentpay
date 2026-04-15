@@ -13,3 +13,4 @@ pywebpush
 stripe
 python-multipart
 httpx
+cdp-sdk

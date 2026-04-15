@@ -163,6 +163,14 @@ export default function AboutPage() {
             policy layer on top.
           </p>
           <p className="mt-3 leading-relaxed text-muted-foreground">
+            This works for both <strong className="text-foreground">fiat payments</strong> (Stripe,
+            cards, bank transfers) and <strong className="text-foreground">crypto-micropayments</strong> via
+            the x402 protocol (USDC on Base). For x402, the agent asks LetAgentPay
+            for authorization before signing an on-chain transaction, then reports
+            the transaction hash for audit. Same policy engine, same dashboard —
+            different payment rail.
+          </p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">
             This design means there&apos;s no vendor lock-in and no need to change
             how your agent pays for things. You just add one checkpoint before and
             one confirmation after.
@@ -200,6 +208,11 @@ export default function AboutPage() {
               <strong className="text-foreground">Natural language policies</strong> — write
               rules in plain English. Our AI converts them to structured JSON policies
               that the engine can enforce deterministically.
+            </li>
+            <li>
+              <strong className="text-foreground">x402 crypto controls</strong> — for on-chain
+              payments: allowed blockchains, domain whitelists/blacklists, per-request
+              limits in USDC, and automatic stablecoin depeg protection.
             </li>
           </ul>
         </section>
@@ -260,6 +273,12 @@ export default function AboutPage() {
             <li>
               <strong className="text-foreground">REST API</strong> — simple HTTP endpoints with
               Bearer token authentication. Works with any language or framework.
+            </li>
+            <li>
+              <strong className="text-foreground">x402 Protocol</strong> — policy middleware for
+              on-chain crypto-micropayments. Agents authorize payments via{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">POST /x402/authorize</code>,
+              sign with their own wallet, and report transaction hashes for audit.
             </li>
           </ul>
           <p className="mt-4 text-base text-muted-foreground">

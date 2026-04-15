@@ -57,6 +57,7 @@ export default function DevelopersPage() {
               <TabsTrigger value="sdk">Python SDK</TabsTrigger>
               <TabsTrigger value="mcp">MCP Server</TabsTrigger>
               <TabsTrigger value="rest">REST API</TabsTrigger>
+              <TabsTrigger value="x402">x402</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sdk" className="mt-4 space-y-4">
@@ -151,7 +152,10 @@ def buy_groceries(items: list[str]) -> dict:
                 <code className="text-xs">confirm_purchase</code>,{" "}
                 <code className="text-xs">get_budget</code>,{" "}
                 <code className="text-xs">get_policy</code>,{" "}
-                <code className="text-xs">list_categories</code>
+                <code className="text-xs">list_categories</code>,{" "}
+                <code className="text-xs">x402_authorize</code>,{" "}
+                <code className="text-xs">x402_report</code>,{" "}
+                <code className="text-xs">x402_budget</code>
               </p>
             </TabsContent>
 
@@ -177,6 +181,47 @@ curl -X POST https://letagentpay.com/api/v1/agent-api/requests/{request_id}/conf
 curl https://letagentpay.com/api/v1/agent-api/budget \\
   -H "Authorization: Bearer agt_your_token"`}</code>
               </pre>
+            </TabsContent>
+
+            <TabsContent value="x402" className="mt-4 space-y-4">
+              <p className="text-base text-muted-foreground">
+                For on-chain crypto-micropayments (USDC on Base), agents use the x402 API.
+                Same policy engine, different payment rail. LetAgentPay authorizes — the agent pays from its own wallet.
+              </p>
+              <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-sm">
+                <code>{`from letagentpay import LetAgentPay
+
+client = LetAgentPay(token="agt_your_token")
+
+# Agent gets HTTP 402 from a resource — ask LAP for authorization
+auth = client.x402.authorize(
+    amount_usd=0.05,
+    asset="USDC",
+    network="eip155:8453",       # Base mainnet
+    pay_to="0xMerchant...",
+    resource_url="https://api.example.com/data",
+    category="api",
+)
+
+if auth.authorized:
+    # Agent signs tx with its OWN wallet, then reports
+    client.x402.report(
+        authorization_id=auth.authorization_id,
+        tx_hash="0xabc123...",
+    )
+else:
+    print(f"Declined: {auth.reason}")
+    # DAILY_BUDGET_EXCEEDED, DOMAIN_BLOCKED, CHAIN_NOT_ALLOWED...`}</code>
+              </pre>
+              <p className="text-sm text-muted-foreground">
+                x402 endpoints: <code className="text-xs">POST /x402/authorize</code>,{" "}
+                <code className="text-xs">POST /x402/report</code>,{" "}
+                <code className="text-xs">GET /x402/budget</code>,{" "}
+                <code className="text-xs">POST /x402/wallets</code>.{" "}
+                MCP tools: <code className="text-xs">x402_authorize</code>,{" "}
+                <code className="text-xs">x402_report</code>,{" "}
+                <code className="text-xs">x402_budget</code>.
+              </p>
             </TabsContent>
           </Tabs>
         </section>

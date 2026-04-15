@@ -301,6 +301,34 @@ Categories are user-defined strings. There is no fixed set mandated by the speci
 
 Implementations MAY add custom check rules. Custom rules MUST be evaluated after the standard 9 checks and MUST use a namespaced rule identifier (e.g. `custom:geo_fence`).
 
+### 12.4 x402 Settlement Policy
+
+When an agent uses the x402 protocol for on-chain micropayments, settlement-specific rules can be defined in an `x402` extension object within the policy:
+
+```json
+{
+  "daily_limit": 100,
+  "per_request_limit": 10,
+  "x402": {
+    "allowed_chains": ["base", "base-sepolia"],
+    "blocked_domains": ["evil.com"],
+    "allowed_domains": ["*.example.com", "api.coingecko.com"],
+    "max_per_request": 1.00
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `x402.allowed_chains` | `string[]` | Chains the agent may pay on. Defaults to `["base", "base-sepolia"]` |
+| `x402.blocked_domains` | `string[]` | Domains the agent must not pay. Supports `*.example.com` wildcards |
+| `x402.allowed_domains` | `string[]` | If set, only these domains are allowed. Supports wildcards |
+| `x402.max_per_request` | `number` | Per-request limit specific to x402 payments (USD). Overrides general `per_request_limit` for x402 |
+
+The `x402` object is evaluated **in addition to** the standard policy checks. General limits (`daily_limit`, `monthly_limit`, budget) apply to both fiat and x402 payments — amounts are converted to USD-equivalent for unified budget tracking.
+
+Conforming engines that do not support x402 MUST ignore the `x402` key.
+
 ## 13. JSON Schema
 
 The normative JSON Schema for ASPS objects is published at:

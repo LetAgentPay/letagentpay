@@ -2,7 +2,21 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-04-15
+
 ### Added
+- **x402 integration** — policy middleware for crypto-micropayments (USDC on Base)
+  - 5 API endpoints: authorize, report, budget, wallets, wallets/create
+  - Policy checks: chain whitelist, domain filter, category, limits, budget, stablecoin depeg protection
+  - Exchange rate service (Coinbase + CoinGecko, Redis cache)
+  - Coinbase CDP wallet provider integration
+  - Dashboard: settlement badge, tx_hash link to Basescan, x402 analytics
+  - Python SDK: `client.x402.authorize()`, `report()`, `budget()`, wallets
+  - TypeScript SDK: `client.x402.authorize()`, `report()`, `budget()`, wallets
+  - MCP server: `x402_authorize`, `x402_report`, `x402_budget` tools
+  - ASPS spec: x402 settlement policy extension (section 12.4)
+  - Self-host guide: CDP configuration, authentication modes
+  - DB migration: settlement fields, agent_wallets, exchange_rates tables
 - Extension point `getEEPublicLinks()` in ee-hooks for enterprise navigation links
 
 ### Fixed

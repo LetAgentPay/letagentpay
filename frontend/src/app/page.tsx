@@ -227,6 +227,10 @@ export default function LandingPage() {
                 title: "Full audit trail",
                 desc: "Every request, every policy check, every decision — logged and searchable. Know exactly what was spent, when, and why.",
               },
+              {
+                title: "x402 crypto-micropayments",
+                desc: "Authorize on-chain USDC payments on Base. Same policy engine for fiat and crypto — unified budget, one dashboard.",
+              },
             ].map((feature) => (
               <div key={feature.title} className="space-y-2">
                 <h3 className="font-semibold">{feature.title}</h3>

@@ -42,7 +42,22 @@ Open `http://localhost:3000` and log in with the specified password.
 | Variable | Description |
 |---|---|
 | `JWT_SECRET` | Secret key for signing JWT tokens. Generate with: `openssl rand -hex 32` |
-| `ADMIN_PASSWORD` | Password for web interface login |
+
+### Authentication
+
+| Variable | Description |
+|---|---|
+| `ADMIN_PASSWORD` | Password for web interface login (recommended for self-hosted) |
+
+How login works depends on what's configured:
+
+| ADMIN_PASSWORD | RESEND_API_KEY | Login method |
+|---|---|---|
+| set | — | Password form (simplest for self-hosted) |
+| not set | set | Magic link sent to email |
+| not set | not set | Magic link printed to backend console (for local dev) |
+
+If `ADMIN_PASSWORD` is set, any email can log in using this password — no email is sent. This is the recommended approach for self-hosted deployments.
 
 ### Optional
 
@@ -54,6 +69,17 @@ Open `http://localhost:3000` and log in with the specified password.
 | `PORT` | `3000` | Frontend port |
 | `COOKIE_SECURE` | `false` | Set to `true` if using HTTPS |
 | `TELEGRAM_BOT_TOKEN` | -- | Telegram bot token from @BotFather (enables Telegram notifications) |
+| `CDP_API_KEY_ID` | -- | Coinbase Developer Platform API key ID (enables x402 wallet creation) |
+| `CDP_API_KEY_SECRET` | -- | CDP API key secret |
+| `CDP_WALLET_SECRET` | -- | CDP wallet encryption key (EC P-256 in base64 DER format) |
+
+### x402 crypto-micropayments (optional)
+
+LetAgentPay can act as a policy middleware for x402 on-chain payments (USDC on Base). Agents ask the policy engine for authorization before paying, then report the transaction hash for audit.
+
+x402 works without CDP credentials -- agents can register wallet addresses manually via `POST /x402/wallets`. CDP credentials are only needed for automatic wallet creation via `POST /x402/wallets/create`.
+
+To set up CDP credentials: register at [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com), create an API key, and generate a wallet secret (EC P-256 key).
 
 To enable Telegram notifications: create a bot via [@BotFather](https://t.me/BotFather), copy the token, set it in `.env`, then connect the bot from **Settings > Notifications** in the dashboard.
 
@@ -78,8 +104,10 @@ To enable Telegram notifications: create a bot via [@BotFather](https://t.me/Bot
 
 - **Frontend** -- web dashboard for managing agents and approving requests
 - **Backend** -- API server, policy engine, authorization
-- **PostgreSQL** -- storage for accounts, agents, requests
-- **Redis** -- spending counters (daily/weekly/monthly), rate limiting
+- **PostgreSQL** -- storage for accounts, agents, requests, x402 authorizations
+- **Redis** -- spending counters (daily/weekly/monthly), rate limiting, exchange rate cache
+
+AI agents connect via the Agent API (`/api/v1/agent-api`) for fiat purchase requests, or the x402 API (`/api/v1/x402`) for crypto-micropayment authorization.
 
 ## Updating
 

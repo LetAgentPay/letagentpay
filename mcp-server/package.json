@@ -1,6 +1,6 @@
 {
   "name": "letagentpay-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for LetAgentPay — AI agent spending policy middleware",
   "main": "index.js",
   "bin": {

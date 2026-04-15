@@ -46,6 +46,64 @@ interface EndpointInfo {
   note?: string;
 }
 
+const x402Endpoints: EndpointInfo[] = [
+  {
+    method: "POST",
+    path: "/x402/authorize",
+    desc: "Request authorization for an x402 payment",
+    request: [
+      { name: "payment_requirements", type: "object", required: true, desc: "x402 payment details (scheme, network, amount, asset, pay_to, resource)" },
+      { name: "max_amount_usd", type: "number", required: true, desc: "Maximum amount in USD" },
+      { name: "category", type: "string", desc: "Purchase category (default: api)" },
+    ],
+    response: [
+      { name: "authorized", type: "boolean", desc: "Whether the payment is authorized" },
+      { name: "authorization_id", type: "string", desc: "Authorization ID (use in report)" },
+      { name: "reason", type: "string", desc: "Decline reason (if not authorized)" },
+      { name: "expires_at", type: "string", desc: "Authorization expiry (ISO 8601)" },
+      { name: "remaining_daily_budget", type: "number", desc: "Remaining daily budget" },
+    ],
+    note: "Decline reasons: CHAIN_NOT_ALLOWED, DOMAIN_BLOCKED, AMOUNT_EXCEEDS_PER_REQUEST_LIMIT, DAILY_BUDGET_EXCEEDED, MONTHLY_BUDGET_EXCEEDED, BUDGET_EXCEEDED, STABLECOIN_DEPEG, CATEGORY_NOT_ALLOWED",
+  },
+  {
+    method: "POST",
+    path: "/x402/report",
+    desc: "Report a completed x402 transaction",
+    request: [
+      { name: "authorization_id", type: "string", required: true, desc: "ID from authorize response" },
+      { name: "tx_hash", type: "string", required: true, desc: "On-chain transaction hash" },
+      { name: "actual_amount_usd", type: "number", desc: "Actual amount paid in USD" },
+    ],
+    response: [
+      { name: "recorded", type: "boolean", desc: "Whether the report was recorded" },
+      { name: "transaction_id", type: "string", desc: "Transaction record ID" },
+    ],
+    note: "Duplicate reports (same authorization_id) return 409 Conflict.",
+  },
+  {
+    method: "GET",
+    path: "/x402/budget",
+    desc: "Check x402 budget and wallets",
+    response: [
+      { name: "budget", type: "string", desc: "Total budget" },
+      { name: "spent", type: "string", desc: "Amount spent" },
+      { name: "remaining", type: "string", desc: "Available budget" },
+      { name: "x402_policy", type: "object", desc: "x402-specific policy (chains, domains, limits)" },
+      { name: "wallets", type: "array", desc: "Registered wallet addresses" },
+    ],
+  },
+  {
+    method: "POST",
+    path: "/x402/wallets",
+    desc: "Register a wallet address",
+    request: [
+      { name: "wallet_address", type: "string", required: true, desc: "Wallet address" },
+      { name: "chain", type: "string", required: true, desc: "Chain: base, base-sepolia, ethereum, solana" },
+      { name: "wallet_provider", type: "string", desc: "Provider name (coinbase, crossmint, privy)" },
+    ],
+  },
+];
+
 const endpoints: EndpointInfo[] = [
   {
     method: "POST",
@@ -208,26 +266,39 @@ function EndpointRow({ ep }: { ep: EndpointInfo }) {
 
 function ApiEndpoints() {
   return (
-    <Card>
-      <CardContent className="py-4">
-        <div className="flex items-baseline justify-between gap-4 mb-2">
-          <h4 className="font-medium">API Endpoints</h4>
-          <a
-            href="/openapi.yaml"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-primary underline hover:no-underline"
-          >
-            OpenAPI spec
-          </a>
-        </div>
-        <div className="rounded border divide-y-0 overflow-hidden">
-          {endpoints.map((ep) => (
-            <EndpointRow key={`${ep.method} ${ep.path}`} ep={ep} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-baseline justify-between gap-4 mb-2">
+            <h4 className="font-medium">API Endpoints</h4>
+            <a
+              href="/openapi.yaml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary underline hover:no-underline"
+            >
+              OpenAPI spec
+            </a>
+          </div>
+          <div className="rounded border divide-y-0 overflow-hidden">
+            {endpoints.map((ep) => (
+              <EndpointRow key={`${ep.method} ${ep.path}`} ep={ep} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="py-4">
+          <h4 className="font-medium mb-2">x402 Endpoints</h4>
+          <div className="rounded border divide-y-0 overflow-hidden">
+            {x402Endpoints.map((ep) => (
+              <EndpointRow key={`${ep.method} ${ep.path}`} ep={ep} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
@@ -287,6 +358,37 @@ export default function GuidePage() {
             </li>
           </ul>
         </div>
+
+        <h4 className="text-sm font-semibold mt-4">x402 Crypto-Micropayments</h4>
+        <p className="text-base text-muted-foreground">
+          For on-chain payments (USDC on Base), agents use the x402 API instead.
+          Same policy engine, different payment rail.
+        </p>
+        <div className="rounded-md border bg-muted/50 p-4 text-sm space-y-2 font-mono">
+          <p>
+            1. Agent gets HTTP 402 from a resource server
+          </p>
+          <p>
+            2. Agent asks LAP for authorization →{" "}
+            <span className="text-muted-foreground">POST /x402/authorize</span>
+          </p>
+          <p>
+            3. Policy engine checks: chain, domain, category, limits, budget →{" "}
+            <span className="text-green-600 dark:text-green-400">authorized</span> or{" "}
+            <span className="text-red-600 dark:text-red-400">declined</span>
+          </p>
+          <p>
+            4. Agent signs transaction with its own wallet → pays on-chain
+          </p>
+          <p>
+            5. Agent reports tx_hash →{" "}
+            <span className="text-muted-foreground">POST /x402/report</span>
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          LetAgentPay never holds keys or funds. The agent pays from its own wallet.
+          LAP only authorizes and logs.
+        </p>
       </section>
 
       {/* Sandbox */}
@@ -659,11 +761,12 @@ export default function GuidePage() {
         </p>
 
         <Tabs defaultValue="curl">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="curl">curl</TabsTrigger>
             <TabsTrigger value="python">Python</TabsTrigger>
             <TabsTrigger value="js">JavaScript</TabsTrigger>
             <TabsTrigger value="mcp">MCP</TabsTrigger>
+            <TabsTrigger value="x402">x402</TabsTrigger>
           </TabsList>
 
           <TabsContent value="curl">
@@ -783,7 +886,55 @@ console.log(result.status); // auto_approved / pending / rejected`}
                 <p className="text-base text-muted-foreground">
                   Available tools: <code>request_purchase</code>,{" "}
                   <code>check_budget</code>, <code>list_categories</code>,{" "}
-                  <code>my_requests</code>
+                  <code>my_requests</code>,{" "}
+                  <code>x402_authorize</code>, <code>x402_report</code>,{" "}
+                  <code>x402_budget</code>
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="x402">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  x402 Crypto-Micropayments (Python SDK)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="overflow-x-auto rounded bg-muted p-4 text-xs">
+{`from letagentpay import LetAgentPay
+
+client = LetAgentPay(token="YOUR_TOKEN")
+
+# Agent gets HTTP 402 from a resource — ask LAP for authorization
+auth = client.x402.authorize(
+    amount_usd=0.05,
+    asset="USDC",
+    network="eip155:8453",       # Base mainnet
+    pay_to="0xMerchant...",
+    resource_url="https://api.example.com/data",
+    category="api",
+)
+
+if auth.authorized:
+    # Agent signs tx with its OWN wallet (not LAP's)
+    # ... your wallet signing code here ...
+
+    # Report tx_hash for audit
+    client.x402.report(
+        authorization_id=auth.authorization_id,
+        tx_hash="0xabc123...",
+    )
+else:
+    print(f"Declined: {auth.reason}")
+    # DAILY_BUDGET_EXCEEDED, DOMAIN_BLOCKED, etc.`}
+                </pre>
+                <p className="text-xs text-muted-foreground mt-3">
+                  x402 policy is configured in the agent&apos;s policy JSON under the{" "}
+                  <code>x402</code> key: <code>allowed_chains</code>,{" "}
+                  <code>blocked_domains</code>, <code>max_per_request</code>.
+                  General limits (daily, monthly, budget) apply to both fiat and x402 payments.
                 </p>
               </CardContent>
             </Card>

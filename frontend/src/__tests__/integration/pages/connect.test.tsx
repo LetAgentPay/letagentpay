@@ -80,12 +80,19 @@ describe("ConnectPage", () => {
 
   it("shows API endpoints list", async () => {
     renderConnect();
-    await screen.findByText("API Endpoints");
+    await screen.findByText("Agent API Endpoints");
     expect(
       screen.getByText("POST /agent-api/requests"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("GET /agent-api/budget"),
+    ).toBeInTheDocument();
+    // x402 endpoints
+    expect(
+      screen.getByText("x402 Endpoints"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("POST /x402/authorize"),
     ).toBeInTheDocument();
   });
 

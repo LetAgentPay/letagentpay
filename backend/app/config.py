@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     playground_max_requests: int = 20
     playground_budget: float = 500.0
 
+    # Coinbase Developer Platform (x402 wallet provider)
+    cdp_api_key_id: str = ""
+    cdp_api_key_secret: str = ""
+    cdp_wallet_secret: str = ""
+
     # Telegram (notifications)
     telegram_bot_token: str = ""
     telegram_admin_chat_id: str = ""  # Internal monitoring: new signups etc.

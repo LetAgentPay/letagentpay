@@ -263,6 +263,7 @@ from app.routers import (  # noqa: E402
     push,
     requests,
     telegram,
+    x402,
 )
 
 app.include_router(config.router)
@@ -281,6 +282,7 @@ app.include_router(budget_rules.router)
 app.include_router(notifications.router)
 app.include_router(telegram.router)
 app.include_router(playground.router)
+app.include_router(x402.router)
 
 # Enterprise modules (optional — core works fully standalone without ee/)
 # Disabled in self-hosted mode: admin panel, billing, stats are SaaS-only.

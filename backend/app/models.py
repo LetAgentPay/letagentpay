@@ -105,6 +105,7 @@ class Agent(Base):
     account: Mapped["Account"] = relationship(back_populates="agents")
     requests: Mapped[list["PurchaseRequest"]] = relationship(back_populates="agent")
     policy_logs: Mapped[list["PolicyLog"]] = relationship(back_populates="agent")
+    wallets: Mapped[list["AgentWallet"]] = relationship(back_populates="agent")
 
 
 class PurchaseRequest(Base):
@@ -132,12 +133,50 @@ class PurchaseRequest(Base):
         DateTime(timezone=True), default=utcnow
     )
 
+    # Settlement fields (x402 / Stripe / manual)
+    settlement_method: Mapped[str | None] = mapped_column(String(20))
+    settlement_currency: Mapped[str | None] = mapped_column(String(10))
+    settlement_network: Mapped[str | None] = mapped_column(String(30))
+    tx_hash: Mapped[str | None] = mapped_column(String(66))
+    amount_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+
     agent: Mapped["Agent"] = relationship(back_populates="requests")
 
     __table_args__ = (
         Index("ix_requests_agent_status", "agent_id", "status"),
         Index("ix_requests_agent_created", "agent_id", "created_at"),
     )
+
+
+class AgentWallet(Base):
+    __tablename__ = "agent_wallets"
+
+    agent_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agents.id"), primary_key=True
+    )
+    chain: Mapped[str] = mapped_column(String(20), primary_key=True)
+    wallet_address: Mapped[str] = mapped_column(String(64), nullable=False)
+    wallet_provider: Mapped[str | None] = mapped_column(String(50))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    agent: Mapped["Agent"] = relationship(back_populates="wallets")
+
+
+class ExchangeRate(Base):
+    __tablename__ = "exchange_rates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pair: Mapped[str] = mapped_column(String(20), nullable=False)
+    rate: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    source: Mapped[str] = mapped_column(String(50), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    __table_args__ = (Index("ix_rates_pair_time", "pair", "fetched_at"),)
 
 
 class PolicyLog(Base):

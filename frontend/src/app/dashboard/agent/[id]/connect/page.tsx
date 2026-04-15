@@ -175,11 +175,12 @@ console.log(await resp.json());`;
 
       {/* Connection methods */}
       <Tabs defaultValue="curl">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="curl">curl</TabsTrigger>
           <TabsTrigger value="python">Python</TabsTrigger>
           <TabsTrigger value="js">JavaScript</TabsTrigger>
           <TabsTrigger value="mcp">MCP</TabsTrigger>
+          <TabsTrigger value="x402">x402</TabsTrigger>
         </TabsList>
 
         <TabsContent value="curl">
@@ -239,7 +240,40 @@ console.log(await resp.json());`;
               <p className="text-sm text-muted-foreground">
                 Available tools: <code>request_purchase</code>,{" "}
                 <code>check_budget</code>, <code>list_categories</code>,{" "}
-                <code>my_requests</code>
+                <code>my_requests</code>,{" "}
+                <code>x402_authorize</code>, <code>x402_report</code>,{" "}
+                <code>x402_budget</code>
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="x402">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">x402 Crypto-Micropayments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="overflow-x-auto rounded bg-muted p-4 text-xs">
+{`from letagentpay import LetAgentPay
+
+client = LetAgentPay(token="${agent.token}")
+
+# Ask LAP for authorization before on-chain payment
+auth = client.x402.authorize(
+    amount_usd=0.05,
+    asset="USDC",
+    network="eip155:8453",
+    pay_to="0xMerchant...",
+    resource_url="https://api.example.com/data",
+)
+
+if auth.authorized:
+    # Sign tx with your own wallet, then report
+    client.x402.report(auth.authorization_id, tx_hash="0x...")`}
+              </pre>
+              <p className="text-xs text-muted-foreground mt-2">
+                Same Bearer token. x402 endpoints use <code>/api/v1/x402/</code> base URL.
               </p>
             </CardContent>
           </Card>
@@ -249,7 +283,7 @@ console.log(await resp.json());`;
       {/* API reference */}
       <Card>
         <CardContent className="py-4">
-          <h3 className="font-medium mb-2">API Endpoints</h3>
+          <h3 className="font-medium mb-2">Agent API Endpoints</h3>
           <div className="text-sm space-y-1 text-muted-foreground">
             <p>
               <code className="text-foreground">POST /agent-api/requests</code>{" "}
@@ -278,6 +312,25 @@ console.log(await resp.json());`;
             <p>
               <code className="text-foreground">GET /agent-api/categories</code>{" "}
               — List valid categories
+            </p>
+          </div>
+          <h3 className="font-medium mb-2 mt-4">x402 Endpoints</h3>
+          <div className="text-sm space-y-1 text-muted-foreground">
+            <p>
+              <code className="text-foreground">POST /x402/authorize</code>{" "}
+              — Authorize an x402 payment
+            </p>
+            <p>
+              <code className="text-foreground">POST /x402/report</code>{" "}
+              — Report completed transaction (tx_hash)
+            </p>
+            <p>
+              <code className="text-foreground">GET /x402/budget</code>{" "}
+              — x402 budget, wallets, policy
+            </p>
+            <p>
+              <code className="text-foreground">POST /x402/wallets</code>{" "}
+              — Register a wallet address
             </p>
           </div>
         </CardContent>

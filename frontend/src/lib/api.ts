@@ -228,6 +228,14 @@ export const api = {
       `/stats/${agentId}/spending`,
     ),
 
+  getX402Stats: (agentId: string) =>
+    request<{
+      total_transactions: number;
+      total_volume_usd: string;
+      settled_count: number;
+      top_domains: { domain: string; count: number; volume_usd: string }[];
+    }>(`/agents/${agentId}/x402-stats`),
+
   // Budget Rules
   getAccountBudget: () => request<AccountBudgetResponse>("/me/budget"),
 

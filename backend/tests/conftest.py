@@ -252,6 +252,7 @@ async def client(db, mock_redis):
     import app.routers.notifications as notifications_mod
     import app.routers.policy as policy_mod
     import app.routers.requests as requests_mod
+    import app.routers.x402 as x402_mod
 
     policy_mod.get_redis = _override_redis
     requests_mod.get_redis = _override_redis
@@ -260,6 +261,7 @@ async def client(db, mock_redis):
     budget_rules_mod.get_redis = _override_redis
     auth_mod.get_redis = _override_redis
     me_mod.get_redis = _override_redis
+    x402_mod.get_redis = _override_redis
 
     # Patch get_redis in playground service
     import app.services.playground as playground_mod
@@ -303,6 +305,7 @@ async def client(db, mock_redis):
     budget_rules_mod.get_redis = original
     auth_mod.get_redis = original
     me_mod.get_redis = original
+    x402_mod.get_redis = original
     dispatcher_mod.dispatch_notification = original_dispatch
     agent_api_dispatch.dispatch_notification = original_agent_api_dispatch
     notifications_mod.get_redis = original

@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 export function createApiClient(token, apiUrl) {
-  return async function apiCall(path, options = {}) {
+  async function apiCall(path, options = {}) {
     const res = await fetch(`${apiUrl}/agent-api${path}`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -17,10 +17,29 @@ export function createApiClient(token, apiUrl) {
       throw new Error(data.detail || `API error: ${res.status}`);
     }
     return data;
-  };
+  }
+
+  async function x402Call(path, options = {}) {
+    const res = await fetch(`${apiUrl}/x402${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || `API error: ${res.status}`);
+    }
+    return data;
+  }
+
+  return { apiCall, x402Call };
 }
 
-export function createServer(apiCall) {
+export function createServer({ apiCall, x402Call }) {
   const server = new McpServer({
     name: "letagentpay",
     version: "0.1.0",
@@ -132,6 +151,100 @@ export function createServer(apiCall) {
       });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    },
+  );
+
+  // --- x402 tools ---
+
+  server.tool(
+    "x402_authorize",
+    "Request authorization for an x402 crypto-micropayment. Call this when you receive HTTP 402 from a resource. Returns authorized/declined with reason.",
+    {
+      amount_usd: z.number().positive().describe("Payment amount in USD"),
+      asset: z.string().optional().describe("Asset symbol (default: USDC)"),
+      network: z.string().optional().describe("CAIP-2 network ID (default: eip155:84532 for Base Sepolia)"),
+      pay_to: z.string().describe("Recipient wallet address"),
+      resource_url: z.string().optional().describe("URL of the resource being paid for"),
+      category: z.string().optional().describe("Purchase category (e.g. api, data, compute). Default: api"),
+    },
+    async ({ amount_usd, asset, network, pay_to, resource_url, category }) => {
+      const result = await x402Call("/authorize", {
+        method: "POST",
+        body: JSON.stringify({
+          payment_requirements: {
+            scheme: "exact",
+            network: network || "eip155:84532",
+            amount: String(Math.round(amount_usd * 1_000_000)),
+            asset: asset || "USDC",
+            pay_to,
+            resource: resource_url,
+          },
+          max_amount_usd: amount_usd,
+          category: category || "api",
+        }),
+      });
+
+      if (result.authorized) {
+        return {
+          content: [{
+            type: "text",
+            text: `Authorized. ID: ${result.authorization_id}\nExpires: ${result.expires_at}\nDaily remaining: $${result.remaining_daily_budget ?? "unlimited"}\nMonthly remaining: $${result.remaining_monthly_budget ?? "unlimited"}`,
+          }],
+        };
+      }
+      return {
+        content: [{
+          type: "text",
+          text: `Declined: ${result.reason}`,
+        }],
+      };
+    },
+  );
+
+  server.tool(
+    "x402_report",
+    "Report a completed x402 transaction. Call after the on-chain payment is settled.",
+    {
+      authorization_id: z.string().describe("Authorization ID from x402_authorize"),
+      tx_hash: z.string().describe("On-chain transaction hash"),
+      actual_amount_usd: z.number().optional().describe("Actual amount paid in USD"),
+    },
+    async ({ authorization_id, tx_hash, actual_amount_usd }) => {
+      const body = { authorization_id, tx_hash };
+      if (actual_amount_usd != null) body.actual_amount_usd = actual_amount_usd;
+      const result = await x402Call("/report", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      return {
+        content: [{
+          type: "text",
+          text: `Recorded. Transaction ID: ${result.transaction_id}`,
+        }],
+      };
+    },
+  );
+
+  server.tool(
+    "x402_budget",
+    "Check x402 payment budget, spending limits, allowed chains, and registered wallets.",
+    {},
+    async () => {
+      const result = await x402Call("/budget");
+      const p = result.x402_policy || {};
+      const wallets = (result.wallets || []).map((w) => `${w.chain}: ${w.address}`).join("\n  ");
+      return {
+        content: [{
+          type: "text",
+          text: [
+            `Budget: $${result.budget}  Spent: $${result.spent}  Remaining: $${result.remaining}`,
+            `Daily: $${p.daily_spent || 0} / $${p.daily_limit || "unlimited"}`,
+            `Monthly: $${p.monthly_spent || 0} / $${p.monthly_limit || "unlimited"}`,
+            `Chains: ${(p.allowed_chains || []).join(", ")}`,
+            wallets ? `Wallets:\n  ${wallets}` : "No wallets registered",
+          ].join("\n"),
+        }],
       };
     },
   );

@@ -272,3 +272,57 @@ async def disable_auto_replenish(
     agent.auto_replenish_max_budget = None
     await db.commit()
     return {"message": "Auto-replenish disabled"}
+
+
+@router.get("/{agent_id}/x402-stats")
+async def get_x402_stats(
+    agent_id: str,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(get_db),
+):
+    """x402 transaction stats for the agent (dashboard use)."""
+    await get_owner_agent(agent_id, account, db)
+
+    result = await db.execute(
+        select(
+            func.count().label("total_transactions"),
+            func.coalesce(func.sum(PurchaseRequest.amount_usd), 0).label(
+                "total_volume_usd"
+            ),
+            func.count()
+            .filter(PurchaseRequest.tx_hash.isnot(None))
+            .label("settled_count"),
+        ).where(
+            PurchaseRequest.agent_id == agent_id,
+            PurchaseRequest.settlement_method == "x402",
+        )
+    )
+    row = result.one()
+
+    # Top domains
+    domain_result = await db.execute(
+        select(
+            PurchaseRequest.merchant,
+            func.count().label("count"),
+            func.sum(PurchaseRequest.amount_usd).label("volume"),
+        )
+        .where(
+            PurchaseRequest.agent_id == agent_id,
+            PurchaseRequest.settlement_method == "x402",
+            PurchaseRequest.merchant.isnot(None),
+        )
+        .group_by(PurchaseRequest.merchant)
+        .order_by(func.count().desc())
+        .limit(5)
+    )
+    top_domains = [
+        {"domain": r.merchant, "count": r.count, "volume_usd": str(r.volume or 0)}
+        for r in domain_result.all()
+    ]
+
+    return {
+        "total_transactions": row.total_transactions,
+        "total_volume_usd": str(row.total_volume_usd),
+        "settled_count": row.settled_count,
+        "top_domains": top_domains,
+    }

@@ -222,6 +222,96 @@ If `actual_amount` differs from the requested amount, the agent's balance is adj
 
 ---
 
+---
+
+## x402 Payment Authorization
+
+LetAgentPay acts as policy middleware for x402 crypto-micropayments. The agent asks LAP for authorization before making an on-chain payment, then reports the transaction hash for audit. LAP never touches private keys or funds.
+
+**Base URL:** `https://api.letagentpay.com/api/v1/x402`
+
+### POST /authorize — Request payment authorization
+
+The agent receives HTTP 402 from a resource and asks LAP: "can I pay?"
+
+**Body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `payment_requirements.scheme` | string | yes | Payment scheme (`exact` or `upto`) |
+| `payment_requirements.network` | string | yes | CAIP-2 network ID (e.g. `eip155:8453` for Base) |
+| `payment_requirements.amount` | string | yes | Amount in smallest units |
+| `payment_requirements.asset` | string | yes | Asset symbol (`USDC`, `USDT`) |
+| `payment_requirements.pay_to` | string | yes | Recipient address |
+| `payment_requirements.resource` | string | no | Resource URL |
+| `max_amount_usd` | number | yes | Maximum amount in USD |
+
+**Response (200):**
+
+```json
+{
+  "authorized": true,
+  "authorization_id": "uuid",
+  "expires_at": "2026-04-13T12:01:00Z",
+  "remaining_daily_budget": 49.95,
+  "remaining_monthly_budget": 499.95
+}
+```
+
+**Decline reasons:** `CHAIN_NOT_ALLOWED`, `DOMAIN_BLOCKED`, `DOMAIN_NOT_ALLOWED`, `AMOUNT_EXCEEDS_PER_REQUEST_LIMIT`, `DAILY_BUDGET_EXCEEDED`, `WEEKLY_BUDGET_EXCEEDED`, `MONTHLY_BUDGET_EXCEEDED`, `BUDGET_EXCEEDED`, `STABLECOIN_DEPEG`.
+
+---
+
+### POST /report — Report completed transaction
+
+After paying, the agent reports the transaction hash for audit logging.
+
+**Body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `authorization_id` | string | yes | ID from authorize response |
+| `tx_hash` | string | yes | On-chain transaction hash |
+| `actual_amount_usd` | number | no | Actual USD amount |
+| `resource_url` | string | no | Resource URL accessed |
+
+---
+
+### GET /budget — x402 budget state
+
+Returns x402-specific budget info including wallet addresses, allowed chains, and spending counters.
+
+---
+
+### POST /wallets — Register a wallet
+
+Register a wallet address for x402 payments (reference only — LAP never holds keys).
+
+**Body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `wallet_address` | string | yes | Wallet address |
+| `chain` | string | yes | Chain name (`base`, `base-sepolia`, `ethereum`, `solana`) |
+| `wallet_provider` | string | no | Provider name (`coinbase`, `crossmint`, `privy`) |
+
+### GET /wallets — List wallets
+
+Returns all registered wallets for the agent.
+
+---
+
+### x402 Flow
+
+```
+1. Agent → GET resource → HTTP 402 + payment requirements
+2. Agent → POST /x402/authorize → LAP checks policy → authorized/declined
+3. Agent → signs tx with own wallet → pays → gets resource
+4. Agent → POST /x402/report → tx_hash for audit
+```
+
+---
+
 ## Request statuses
 
 | Status | Description |

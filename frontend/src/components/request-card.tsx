@@ -9,7 +9,16 @@ import { api, ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { track } from "@/lib/ee-hooks";
 import { toast } from "sonner";
-import { Check, ExternalLink, X } from "lucide-react";
+import { Check, ExternalLink, Link2, X } from "lucide-react";
+
+function getTxExplorerUrl(txHash: string): string {
+  // Default to Base (Basescan); can be extended with chain info later
+  if (txHash.startsWith("0x")) {
+    return `https://basescan.org/tx/${txHash}`;
+  }
+  // Solana-style hashes
+  return `https://explorer.solana.com/tx/${txHash}`;
+}
 
 interface RequestCardProps {
   request: PurchaseRequestItem;
@@ -71,6 +80,11 @@ export const RequestCard = memo(function RequestCard({ request: req, currency, o
             <Badge variant={statusVariant[req.status] ?? "secondary"} className="text-xs">
               {req.status}
             </Badge>
+            {req.settlement_method && (
+              <Badge variant="outline" className="text-xs font-mono">
+                {req.settlement_method === "x402" ? `x402 · ${req.settlement_currency || "USDC"}` : req.settlement_method}
+              </Badge>
+            )}
           </div>
           <div className="mt-0.5 text-base text-muted-foreground truncate">
             {req.merchant && <span>{req.merchant}</span>}
@@ -107,6 +121,17 @@ export const RequestCard = memo(function RequestCard({ request: req, currency, o
                 >
                   <ExternalLink className="h-3 w-3" />
                   Receipt
+                </a>
+              )}
+              {req.tx_hash && (
+                <a
+                  href={getTxExplorerUrl(req.tx_hash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-mono text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  <Link2 className="h-3 w-3" />
+                  {req.tx_hash.slice(0, 6)}...{req.tx_hash.slice(-4)}
                 </a>
               )}
             </div>

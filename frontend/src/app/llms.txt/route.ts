@@ -19,6 +19,7 @@ LetAgentPay lets humans define spending policies (budgets, category limits, sche
 - **TypeScript SDK**: \`npm install letagentpay\` — JS/TS integration
 - **MCP Server**: \`npx letagentpay-mcp\` — Claude Desktop, Cursor, OpenClaw
 - **REST API**: Direct HTTP calls for any language/framework
+- **x402 Protocol**: Policy middleware for crypto-micropayments (USDC on Base)
 - **LangChain**: Custom tool (BaseTool) — see examples/langchain_tool.py
 - **OpenAI Agents SDK**: Function tool (@function_tool) — see examples/openai_agents.py
 - **CrewAI**: CrewAI tool (@tool) — see examples/crewai_agent.py

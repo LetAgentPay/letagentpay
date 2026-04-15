@@ -179,12 +179,74 @@ function EndpointRow({ ep }: { ep: EndpointInfo }) {
   );
 }
 
+const x402Endpoints: EndpointInfo[] = [
+  {
+    method: "POST",
+    path: "/x402/authorize",
+    desc: "Authorize an x402 payment",
+    request: [
+      { name: "payment_requirements", type: "object", required: true, desc: "x402 payment details (scheme, network, amount, asset, pay_to)" },
+      { name: "max_amount_usd", type: "number", required: true, desc: "Maximum amount in USD" },
+      { name: "category", type: "string", desc: "Purchase category (default: api)" },
+    ],
+    response: [
+      { name: "authorized", type: "boolean", desc: "Whether the payment is authorized" },
+      { name: "authorization_id", type: "string", desc: "Authorization ID (use in report)" },
+      { name: "reason", type: "string", desc: "Decline reason (if not authorized)" },
+      { name: "expires_at", type: "string", desc: "Authorization expiry (ISO 8601)" },
+    ],
+    note: "Decline reasons: CHAIN_NOT_ALLOWED, DOMAIN_BLOCKED, AMOUNT_EXCEEDS_PER_REQUEST_LIMIT, DAILY_BUDGET_EXCEEDED, BUDGET_EXCEEDED, STABLECOIN_DEPEG",
+  },
+  {
+    method: "POST",
+    path: "/x402/report",
+    desc: "Report completed x402 transaction",
+    request: [
+      { name: "authorization_id", type: "string", required: true, desc: "ID from authorize response" },
+      { name: "tx_hash", type: "string", required: true, desc: "On-chain transaction hash" },
+      { name: "actual_amount_usd", type: "number", desc: "Actual amount paid in USD" },
+    ],
+  },
+  {
+    method: "GET",
+    path: "/x402/budget",
+    desc: "x402 budget, wallets, and policy",
+    response: [
+      { name: "budget", type: "string", desc: "Total budget" },
+      { name: "x402_policy", type: "object", desc: "Allowed chains, domains, per-request limit" },
+      { name: "wallets", type: "array", desc: "Registered wallet addresses" },
+    ],
+  },
+  {
+    method: "POST",
+    path: "/x402/wallets",
+    desc: "Register a wallet address",
+    request: [
+      { name: "wallet_address", type: "string", required: true, desc: "Wallet address" },
+      { name: "chain", type: "string", required: true, desc: "base, base-sepolia, ethereum, solana" },
+    ],
+  },
+];
+
 export function ApiEndpoints() {
   return (
-    <div className="rounded-lg border divide-y-0">
-      {endpoints.map((ep) => (
-        <EndpointRow key={`${ep.method}-${ep.path}`} ep={ep} />
-      ))}
+    <div className="space-y-4">
+      <div>
+        <h4 className="text-sm font-medium text-muted-foreground mb-1">Agent API</h4>
+        <div className="rounded-lg border divide-y-0">
+          {endpoints.map((ep) => (
+            <EndpointRow key={`${ep.method}-${ep.path}`} ep={ep} />
+          ))}
+        </div>
+      </div>
+      <div>
+        <h4 className="text-sm font-medium text-muted-foreground mb-1">x402 API</h4>
+        <div className="rounded-lg border divide-y-0">
+          {x402Endpoints.map((ep) => (
+            <EndpointRow key={`${ep.method}-${ep.path}`} ep={ep} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

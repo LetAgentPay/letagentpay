@@ -86,6 +86,9 @@ export interface PurchaseRequestItem {
   rejection_reason: string | null;
   actual_amount: string | null;
   receipt_url: string | null;
+  settlement_method: string | null;
+  settlement_currency: string | null;
+  tx_hash: string | null;
   completed_at: string | null;
   created_at: string;
   reviewed_at: string | null;
