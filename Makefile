@@ -150,6 +150,33 @@ sync-sdk:
 	@bash scripts/sync_sdk.sh
 
 # -----------------------------------------------------------------------
+# Content publish (no version bump — blog posts, docs, etc.)
+# -----------------------------------------------------------------------
+
+publish:
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "Error: working tree is not clean."; \
+		echo "Commit your content changes with a message starting with 'publish:', e.g.:"; \
+		echo "  git commit -m 'publish: new blog post'"; \
+		exit 1; \
+	fi
+	@MSG=$$(git log -1 --format=%s); \
+	if ! echo "$$MSG" | grep -q '^publish:'; then \
+		echo "Error: last commit message must start with 'publish:'"; \
+		echo "Current: $$MSG"; \
+		echo ""; \
+		echo "Usage: commit content with 'publish: ...' message, then run make publish"; \
+		exit 1; \
+	fi; \
+	echo "Publishing: $$MSG"; \
+	git push; \
+	echo ""; \
+	echo "Syncing to enterprise repo..."; \
+	bash scripts/sync_repos.sh enterprise; \
+	echo ""; \
+	echo "Content published. CI will rebuild and deploy frontend."
+
+# -----------------------------------------------------------------------
 # Release (unified versioning)
 # -----------------------------------------------------------------------
 

@@ -12,6 +12,11 @@ const BASE_FOOTER_LINKS = [
   { href: "/asps", label: "ASPS" },
 ];
 
+const LEGAL_LINKS = [
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+];
+
 export function PublicFooter() {
   const { playground_enabled } = usePublicConfig();
 
@@ -32,13 +37,19 @@ export function PublicFooter() {
           LetAgentPay &copy; {new Date().getFullYear()}
           <VersionLink className="ml-2 text-xs opacity-40" />
         </span>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-4">
           {links.map(({ href, label }) => (
             <Link key={href} href={href} className="hover:text-foreground">
               {label}
             </Link>
           ))}
           <SupportLink className="hover:text-foreground" />
+          <span className="text-muted-foreground/40">|</span>
+          {LEGAL_LINKS.map(({ href, label }) => (
+            <Link key={href} href={href} className="hover:text-foreground">
+              {label}
+            </Link>
+          ))}
         </div>
       </div>
     </footer>

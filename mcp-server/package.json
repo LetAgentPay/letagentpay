@@ -1,7 +1,7 @@
 {
   "name": "letagentpay-mcp",
-  "version": "0.2.0",
-  "description": "MCP server for LetAgentPay — AI agent spending policy middleware",
+  "version": "0.2.1",
+  "description": "MCP server for LetAgentPay — AI agent spending policy middleware for fiat and x402 crypto-micropayments",
   "main": "index.js",
   "bin": {
     "letagentpay-mcp": "./index.js"

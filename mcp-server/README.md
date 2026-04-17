@@ -41,6 +41,8 @@ Get your agent token at [letagentpay.com](https://letagentpay.com) or from your 
 
 ## Tools
 
+### Fiat Purchases
+
 | Tool | Description |
 |------|-------------|
 | `request_purchase` | Submit a purchase request for policy evaluation |
@@ -50,7 +52,15 @@ Get your agent token at [letagentpay.com](https://letagentpay.com) or from your 
 | `list_requests` | List purchase requests with optional status filter |
 | `confirm_purchase` | Confirm purchase completion (or failure) |
 
-Every purchase request goes through 8 deterministic policy checks: agent status, category, per-request limit, schedule, daily/weekly/monthly limits, and total budget.
+### x402 Crypto-Micropayments
+
+| Tool | Description |
+|------|-------------|
+| `x402_authorize` | Authorize an on-chain USDC payment (checks budget, chain, domain) |
+| `x402_report` | Report a completed transaction (tx_hash for audit) |
+| `x402_budget` | View x402 budget, allowed chains, wallets |
+
+Every request goes through deterministic policy checks: agent status, category, per-request limit, schedule, daily/weekly/monthly limits, total budget, chain whitelist, domain filter, and stablecoin depeg protection.
 
 ## Environment Variables
 
