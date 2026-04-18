@@ -42,9 +42,8 @@ def request_purchase(
 
     Args:
         amount: Amount to spend in dollars.
-        category: One of: groceries, restaurants, food_delivery, taxi,
-            transport, subscriptions, entertainment, education, health,
-            electronics, clothing, gas, household, flights, accommodation, other.
+        category: Spending category (e.g. groceries, electronics, subscriptions).
+            Use list_categories to get valid options. Unknown categories are auto-mapped.
         merchant_name: Name of the merchant or service.
         description: What the purchase is for.
     """
@@ -97,6 +96,45 @@ def check_budget() -> str:
         return json.dumps({"error": e.detail, "status_code": e.status})
 
 
+@function_tool
+def list_categories() -> str:
+    """List valid spending categories for purchase requests."""
+    try:
+        categories = client.list_categories()
+        return json.dumps({"categories": categories})
+    except LetAgentPayError as e:
+        return json.dumps({"error": e.detail, "status_code": e.status})
+
+
+@function_tool
+def confirm_purchase(
+    request_id: str,
+    success: bool,
+    actual_amount: float | None = None,
+) -> str:
+    """Confirm the result of an approved purchase.
+
+    Call this AFTER completing (or failing) a purchase to close the request.
+
+    Args:
+        request_id: The request_id from request_purchase.
+        success: Whether the purchase was successful.
+        actual_amount: Actual amount spent, if different from requested.
+    """
+    try:
+        result = client.confirm_purchase(
+            request_id,
+            success=success,
+            actual_amount=actual_amount,
+        )
+        return json.dumps({
+            "request_id": result.request_id,
+            "status": result.status,
+        })
+    except LetAgentPayError as e:
+        return json.dumps({"error": e.detail, "status_code": e.status})
+
+
 # --- Agent Definition ---
 
 agent = Agent(
@@ -109,9 +147,10 @@ agent = Agent(
         "2. If the request is rejected, explain why and suggest alternatives.\n"
         "3. If the request is pending, tell the user it needs human approval.\n"
         "4. You can check the budget at any time with check_budget.\n"
-        "5. Be cost-conscious and suggest cheaper alternatives when appropriate."
+        "5. Be cost-conscious and suggest cheaper alternatives when appropriate.\n"
+        "6. After a successful purchase, call confirm_purchase with the request_id."
     ),
-    tools=[request_purchase, check_budget],
+    tools=[request_purchase, check_budget, list_categories, confirm_purchase],
 )
 
 

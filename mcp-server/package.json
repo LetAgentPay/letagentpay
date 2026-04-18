@@ -1,6 +1,6 @@
 {
   "name": "letagentpay-mcp",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "MCP server for LetAgentPay — AI agent spending policy middleware for fiat and x402 crypto-micropayments",
   "main": "index.js",
   "bin": {
@@ -15,7 +15,16 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "keywords": ["mcp", "letagentpay", "ai-agent", "purchases", "budget", "policy", "openclaw", "claude"],
+  "keywords": [
+    "mcp",
+    "letagentpay",
+    "ai-agent",
+    "purchases",
+    "budget",
+    "policy",
+    "openclaw",
+    "claude"
+  ],
   "author": "LetAgentPay <hello@letagentpay.com>",
   "license": "MIT",
   "repository": {

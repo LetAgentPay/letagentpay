@@ -178,6 +178,7 @@ frontend/
 mcp-server/                  # MCP server (npx letagentpay-mcp)
 sdk/                         # Python SDK (pip install letagentpay)
 sdk-js/                      # TypeScript SDK (npm install letagentpay)
+sdk-vercel-ai/               # Vercel AI SDK tools (npm install @letagentpay/ai)
 openclaw-skill/              # OpenClaw skill
 ```
 
@@ -185,15 +186,18 @@ openclaw-skill/              # OpenClaw skill
 
 LetAgentPay works with popular AI agent frameworks and platforms out of the box:
 
-| Platform | How | Example |
-|----------|-----|---------|
+| Platform | How | Docs |
+|----------|-----|------|
+| **Vercel AI SDK** | npm package (`@letagentpay/ai`) | [Guide](docs/integrations/vercel_ai.md) |
+| **Google ADK** | Plain function tools | [Guide](docs/integrations/google_adk.md) |
+| **Stripe** | Policy middleware before payments | [Guide](docs/integrations/stripe.md) |
+| **OpenAI Agents SDK** | Function tool (`@function_tool`) | [Guide](docs/integrations/openai_agents.md) |
+| **LangChain** | Custom tool (`BaseTool`) | [Guide](docs/integrations/langchain.md) |
+| **CrewAI** | CrewAI tool (`@tool`) | [Guide](docs/integrations/crewai.md) |
+| **Claude MCP** | MCP server (`npx letagentpay-mcp`) | [Guide](docs/mcp_server.md) |
 | **OpenClaw** | Skill for Claude Code agents | [OpenClaw skill](openclaw-skill/) |
-| **Claude MCP** | MCP server (`npx letagentpay-mcp`) | [MCP docs](docs/mcp_server.md) |
-| **LangChain** | Custom tool (`BaseTool`) | [langchain_tool.py](examples/langchain_tool.py) |
-| **OpenAI Agents SDK** | Function tool (`@function_tool`) | [openai_agents.py](examples/openai_agents.py) |
-| **CrewAI** | CrewAI tool (`@tool`) | [crewai_agent.py](examples/crewai_agent.py) |
 
-Each integration is a thin wrapper around the [Python SDK](docs/python_sdk.md) or [TypeScript SDK](docs/typescript_sdk.md) — your agent calls `request_purchase()` before spending, and LetAgentPay enforces the policy.
+Each integration wraps `request_purchase()` in the framework's native tool format — the agent asks for permission before spending, and LetAgentPay enforces the policy.
 
 See [docs/integrations/](docs/integrations/) for detailed guides.
 
@@ -206,7 +210,7 @@ See [docs/integrations/](docs/integrations/) for detailed guides.
 - [Python SDK](docs/python_sdk.md)
 - [TypeScript SDK](docs/typescript_sdk.md)
 - [Budget Rules](docs/budget_rules.md)
-- [Integrations](docs/integrations/) — OpenClaw, Claude MCP, LangChain, OpenAI Agents, CrewAI
+- [Integrations](docs/integrations/) — Vercel AI SDK, Google ADK, Stripe, OpenAI Agents, LangChain, CrewAI, MCP, OpenClaw
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](docs/CHANGELOG.md)
 

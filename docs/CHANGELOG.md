@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-04-18
+
+### Added
+- **Vercel AI SDK** — `@letagentpay/ai` npm package with 5 tools for `generateText()`/`streamText()`: requestPurchase, checkBudget, listCategories, myRequests, confirmPurchase
+- **Google ADK integration** — example with multi-agent setup (researcher + buyer + coordinator with separate budgets)
+- **Stripe integration guide** — architecture guide "LAP before Stripe" with Python and TypeScript examples
+- `list_categories` and `confirm_purchase` tools added to all existing integrations (OpenAI Agents, LangChain, CrewAI)
+- Unified package publish system (`publish_packages.sh` + `sync_package.sh`) with independent versioning
+- CI workflows (test + release) for all npm packages (sdk-js, sdk-ai, mcp-server)
+
+### Improved
+- Category descriptions in tools now reference `listCategories` instead of hardcoded lists — preparing for custom categories (ASPS sec 3.3)
+- Self-Hosted section added to all integration docs
+
+### Fixed
+- npm audit: protobufjs (critical), dompurify, hono (frontend + mcp-server)
+- sdk-vercel-ai: migrated ai@4→ai@6, `parameters`→`inputSchema`
+- Enterprise version improvements
+
 ## [1.3.0] - 2026-04-15
 
 ### Added

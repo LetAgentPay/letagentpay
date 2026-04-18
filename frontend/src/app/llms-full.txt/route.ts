@@ -290,6 +290,9 @@ LetAgentPay integrates with popular AI agent frameworks via thin wrappers around
 - **OpenAI Agents SDK** — @function_tool decorator (see examples/openai_agents.py)
 - **CrewAI** — CrewAI @tool decorator, supports multi-agent crews with separate budgets (see examples/crewai_agent.py)
 - **Claude MCP** — zero-code integration via MCP server (see above)
+- **Vercel AI SDK** — \`npm install @letagentpay/ai\` with ready-made tools for generateText/streamText
+- **Google ADK** — plain Python function tools, works with Agent class (see examples/google_adk_agent.py)
+- **Stripe** — governance middleware before Stripe payments (see examples/stripe_governance.py and examples/stripe_governance.ts)
 
 Each integration follows the same pattern: wrap \`client.request_purchase()\` as a native tool for the framework.
 

@@ -88,7 +88,16 @@ agent = Agent(
 
 ## Categories
 
-Valid categories: `groceries`, `restaurants`, `food_delivery`, `taxi`, `transport`, `subscriptions`, `entertainment`, `education`, `health`, `electronics`, `clothing`, `gas`, `household`, `flights`, `accommodation`, `other`.
+Categories are user-defined per agent. Use the `list_categories` tool to get the valid list at runtime. Unknown categories are automatically mapped to the closest match by the server.
+
+## Self-Hosted
+
+```python
+client = LetAgentPay(
+    token="agt_...",
+    base_url="https://your-instance.com/api/v1/agent-api",
+)
+```
 
 ## Full Example
 

@@ -23,6 +23,9 @@ LetAgentPay lets humans define spending policies (budgets, category limits, sche
 - **LangChain**: Custom tool (BaseTool) — see examples/langchain_tool.py
 - **OpenAI Agents SDK**: Function tool (@function_tool) — see examples/openai_agents.py
 - **CrewAI**: CrewAI tool (@tool) — see examples/crewai_agent.py
+- **Vercel AI SDK**: \`npm install @letagentpay/ai\` — ready-made tools for generateText/streamText
+- **Google ADK**: Plain function tools — see examples/google_adk_agent.py
+- **Stripe**: Policy middleware before Stripe payments — see examples/stripe_governance.py
 
 ## Links
 

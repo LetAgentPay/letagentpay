@@ -33,9 +33,8 @@ class PurchaseRequestInput(BaseModel):
     amount: float = Field(description="Amount to spend in dollars")
     category: str = Field(
         description=(
-            "Spending category. One of: groceries, restaurants, food_delivery, "
-            "taxi, transport, subscriptions, entertainment, education, health, "
-            "electronics, clothing, gas, household, flights, accommodation, other"
+            "Spending category (e.g. groceries, electronics, subscriptions). "
+            "Unknown categories are auto-mapped to the closest match."
         )
     )
     merchant_name: str = Field(description="Name of the merchant or service")
@@ -108,6 +107,110 @@ class LetAgentPayTool(BaseTool):
             return json.dumps({"error": e.detail, "status_code": e.status})
 
 
+class CheckBudgetTool(BaseTool):
+    """LangChain tool that checks the agent's budget status."""
+
+    name: str = "check_budget"
+    description: str = (
+        "Check the current budget status including spent, held, and remaining amounts."
+    )
+
+    client: Any = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, token: str | None = None, base_url: str | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self.client = LetAgentPay(token=token, base_url=base_url)
+
+    def _run(self) -> str:
+        try:
+            budget = self.client.check_budget()
+            return json.dumps({
+                "budget": budget.budget,
+                "spent": budget.spent,
+                "held": budget.held,
+                "remaining": budget.remaining,
+                "currency": budget.currency,
+            })
+        except LetAgentPayError as e:
+            return json.dumps({"error": e.detail, "status_code": e.status})
+
+
+class ListCategoriesTool(BaseTool):
+    """LangChain tool that lists valid spending categories."""
+
+    name: str = "list_categories"
+    description: str = "List valid spending categories for purchase requests."
+
+    client: Any = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, token: str | None = None, base_url: str | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self.client = LetAgentPay(token=token, base_url=base_url)
+
+    def _run(self) -> str:
+        try:
+            categories = self.client.list_categories()
+            return json.dumps({"categories": categories})
+        except LetAgentPayError as e:
+            return json.dumps({"error": e.detail, "status_code": e.status})
+
+
+class ConfirmPurchaseInput(BaseModel):
+    """Input schema for the confirm purchase tool."""
+
+    request_id: str = Field(description="The request_id from request_purchase")
+    success: bool = Field(description="Whether the purchase was successful")
+    actual_amount: float | None = Field(
+        default=None,
+        description="Actual amount spent, if different from requested",
+    )
+
+
+class ConfirmPurchaseTool(BaseTool):
+    """LangChain tool that confirms the result of an approved purchase."""
+
+    name: str = "confirm_purchase"
+    description: str = (
+        "Confirm the result of an approved purchase. "
+        "Call AFTER completing (or failing) a purchase to close the request."
+    )
+    args_schema: type[BaseModel] = ConfirmPurchaseInput
+
+    client: Any = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, token: str | None = None, base_url: str | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self.client = LetAgentPay(token=token, base_url=base_url)
+
+    def _run(
+        self,
+        request_id: str,
+        success: bool,
+        actual_amount: float | None = None,
+    ) -> str:
+        try:
+            result = self.client.confirm_purchase(
+                request_id,
+                success=success,
+                actual_amount=actual_amount,
+            )
+            return json.dumps({
+                "request_id": result.request_id,
+                "status": result.status,
+            })
+        except LetAgentPayError as e:
+            return json.dumps({"error": e.detail, "status_code": e.status})
+
+
 # --- Example: Run with a LangChain Agent ---
 
 
@@ -117,8 +220,15 @@ def main():
     from langchain.agents import AgentExecutor, create_tool_calling_agent
     from langchain_core.prompts import ChatPromptTemplate
 
-    # Create the LetAgentPay tool (reads LETAGENTPAY_TOKEN from env)
-    purchase_tool = LetAgentPayTool()
+    # Create LetAgentPay tools — pass token once, share across all tools
+    # token/base_url can also be read from LETAGENTPAY_TOKEN env var
+    token = None  # or "agt_your_token"
+    base_url = None  # or "https://your-instance.com/api/v1/agent-api"
+    purchase_tool = LetAgentPayTool(token=token, base_url=base_url)
+    budget_tool = CheckBudgetTool(token=token, base_url=base_url)
+    categories_tool = ListCategoriesTool(token=token, base_url=base_url)
+    confirm_tool = ConfirmPurchaseTool(token=token, base_url=base_url)
+    tools = [purchase_tool, budget_tool, categories_tool, confirm_tool]
 
     # Set up the LLM and agent
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -128,14 +238,15 @@ def main():
             "You are a helpful assistant that can make purchases on behalf of "
             "the user. ALWAYS use the request_purchase tool before making any "
             "purchase. If the request is rejected or pending, inform the user "
-            "and do NOT proceed with the purchase.",
+            "and do NOT proceed with the purchase. After a successful purchase, "
+            "call confirm_purchase with the request_id.",
         ),
         ("human", "{input}"),
         ("placeholder", "{agent_scratchpad}"),
     ])
 
-    agent = create_tool_calling_agent(llm, [purchase_tool], prompt)
-    executor = AgentExecutor(agent=agent, tools=[purchase_tool], verbose=True)
+    agent = create_tool_calling_agent(llm, tools, prompt)
+    executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
     # Run example tasks
     tasks = [

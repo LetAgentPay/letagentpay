@@ -43,9 +43,8 @@ def request_purchase(
 
     Args:
         amount: Amount to spend in dollars.
-        category: One of: groceries, restaurants, food_delivery, taxi,
-            transport, subscriptions, entertainment, education, health,
-            electronics, clothing, gas, household, flights, accommodation, other.
+        category: Spending category (e.g. groceries, electronics, subscriptions).
+            Use List Categories to get valid options. Unknown categories are auto-mapped.
         merchant_name: Name of the merchant or service.
         description: What the purchase is for.
     """
@@ -98,6 +97,45 @@ def check_budget() -> str:
         return json.dumps({"error": e.detail, "status_code": e.status})
 
 
+@tool("List Categories")
+def list_categories() -> str:
+    """List valid spending categories for purchase requests."""
+    try:
+        categories = client.list_categories()
+        return json.dumps({"categories": categories})
+    except LetAgentPayError as e:
+        return json.dumps({"error": e.detail, "status_code": e.status})
+
+
+@tool("Confirm Purchase")
+def confirm_purchase(
+    request_id: str,
+    success: bool,
+    actual_amount: float | None = None,
+) -> str:
+    """Confirm the result of an approved purchase.
+
+    Call this AFTER completing (or failing) a purchase to close the request.
+
+    Args:
+        request_id: The request_id from Request Purchase.
+        success: Whether the purchase was successful.
+        actual_amount: Actual amount spent, if different from requested.
+    """
+    try:
+        result = client.confirm_purchase(
+            request_id,
+            success=success,
+            actual_amount=actual_amount,
+        )
+        return json.dumps({
+            "request_id": result.request_id,
+            "status": result.status,
+        })
+    except LetAgentPayError as e:
+        return json.dumps({"error": e.detail, "status_code": e.status})
+
+
 # --- CrewAI Agent & Task ---
 
 shopping_agent = Agent(
@@ -106,9 +144,10 @@ shopping_agent = Agent(
     backstory=(
         "You are a responsible shopping assistant that always checks "
         "spending policies before making any purchase. You never proceed "
-        "with a purchase that was rejected or is still pending review."
+        "with a purchase that was rejected or is still pending review. "
+        "After completing a purchase, you always confirm it."
     ),
-    tools=[request_purchase, check_budget],
+    tools=[request_purchase, check_budget, list_categories, confirm_purchase],
     verbose=True,
 )
 

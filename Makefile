@@ -1,6 +1,6 @@
 .PHONY: help install install-dev format lint test test-unit test-integration coverage \
        run run-back run-front build migrate clean \
-       release sdk-release patch minor major \
+       release sdk-release publish-packages patch minor major \
        back-% front-%
 
 PYTHON := python
@@ -45,7 +45,8 @@ help:
 	@echo ""
 	@echo "Release:"
 	@echo "  release          Create release: make release patch|minor|major"
-	@echo "  sdk-release      Release SDK to PyPI: make sdk-release patch|minor|major"
+	@echo "  publish-packages Publish packages: make publish-packages [package] patch|minor|major"
+	@echo "  sdk-release      (alias) Publish Python SDK: make sdk-release patch|minor|major"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean            Remove caches and build artifacts"
@@ -138,7 +139,11 @@ clean:
 
 sync:
 	@bash scripts/sync_repos.sh both
-	@bash scripts/sync_sdk.sh
+	@bash scripts/sync_package.sh sdk
+	@bash scripts/sync_package.sh sdk-js
+	@bash scripts/sync_package.sh sdk-ai
+	@bash scripts/sync_package.sh mcp-server
+	@bash scripts/sync_package.sh openclaw-skill
 
 sync-public:
 	@bash scripts/sync_repos.sh public
@@ -147,7 +152,7 @@ sync-enterprise:
 	@bash scripts/sync_repos.sh enterprise
 
 sync-sdk:
-	@bash scripts/sync_sdk.sh
+	@bash scripts/sync_package.sh sdk
 
 # -----------------------------------------------------------------------
 # Content publish (no version bump — blog posts, docs, etc.)
@@ -229,44 +234,27 @@ release:
 	echo ""; \
 	echo "Syncing to GitHub repos..."; \
 	bash scripts/sync_repos.sh both; \
-	bash scripts/sync_sdk.sh; \
+	bash scripts/sync_package.sh sdk; \
+	bash scripts/sync_package.sh sdk-js; \
+	bash scripts/sync_package.sh sdk-ai; \
+	bash scripts/sync_package.sh mcp-server; \
+	bash scripts/sync_package.sh openclaw-skill; \
 	echo ""; \
 	echo "Released v$$NEW_VERSION (CI: test → release → deploy)"
 
-sdk-release:
+# -----------------------------------------------------------------------
+# Package publishing (independent versioning)
+# -----------------------------------------------------------------------
+
+publish-packages:
 	@if [ -z "$(RELEASE_TYPE)" ]; then \
-		echo "Usage: make sdk-release patch|minor|major"; \
-		exit 1; \
-	fi
-	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "Error: working tree is not clean. Commit all changes before release."; \
-		exit 1; \
-	fi
-	@CURRENT=$$(sed -n 's/^version = "\([^"]*\)"/\1/p' sdk/pyproject.toml); \
-	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
-	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
-	PATCH=$$(echo $$CURRENT | cut -d. -f3); \
-	if [ "$(RELEASE_TYPE)" = "major" ]; then \
-		MAJOR=$$((MAJOR + 1)); MINOR=0; PATCH=0; \
-	elif [ "$(RELEASE_TYPE)" = "minor" ]; then \
-		MINOR=$$((MINOR + 1)); PATCH=0; \
+		bash scripts/publish_packages.sh $(filter-out publish-packages,$(MAKECMDGOALS)); \
 	else \
-		PATCH=$$((PATCH + 1)); \
-	fi; \
-	NEW_VERSION="$$MAJOR.$$MINOR.$$PATCH"; \
-	echo "SDK current: v$$CURRENT"; \
-	echo "SDK new:     v$$NEW_VERSION"; \
-	echo ""; \
-	sed -i '' 's/^version = "[^"]*"/version = "'$$NEW_VERSION'"/' sdk/pyproject.toml; \
-	sed -i '' 's/^__version__ = "[^"]*"/__version__ = "'$$NEW_VERSION'"/' sdk/letagentpay/__init__.py; \
-	git add sdk/pyproject.toml sdk/letagentpay/__init__.py; \
-	git commit -m "sdk-release: v$$NEW_VERSION"; \
-	git push; \
-	echo ""; \
-	echo "Syncing SDK..."; \
-	bash scripts/sync_sdk.sh; \
-	echo ""; \
-	echo "SDK released v$$NEW_VERSION (CI: test → release → PyPI publish)"
+		bash scripts/publish_packages.sh $(filter-out publish-packages patch minor major,$(MAKECMDGOALS)) $(RELEASE_TYPE); \
+	fi
+
+sdk-release:
+	@bash scripts/publish_packages.sh sdk $(RELEASE_TYPE)
 
 patch minor major:
 	@:
