@@ -208,6 +208,7 @@ Rules:
     except (
         anthropic.APIError,
         anthropic.APIConnectionError,
+        TypeError,
         ValueError,
         IndexError,
     ) as e:
