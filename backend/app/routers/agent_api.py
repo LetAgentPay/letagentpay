@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.database import get_db
 from app.dependencies import get_agent_by_token
-from app.models import Account, Agent, BudgetRule, PurchaseRequest
+from app.models import Account, Agent, BudgetRule, Category, PurchaseRequest
 from app.redis import get_redis
 from app.schemas import (
     BudgetResponse,
@@ -19,7 +19,7 @@ from app.schemas import (
     PurchaseRequestResponse,
 )
 from app.services.auto_replenish import maybe_auto_replenish
-from app.services.category_resolver import CATEGORIES, resolve_category
+from app.services.category_resolver import resolve_category
 from app.services.notification_dispatcher import (
     NotificationEvent,
     dispatch_notification,
@@ -75,8 +75,10 @@ async def create_purchase_request(
         if cached:
             return PurchaseRequestResponse(**json.loads(cached))
 
-    # Resolve category (static aliases + AI fallback)
-    resolved_category, original_category = await resolve_category(body.category)
+    # Resolve category (per-account aliases + AI fallback)
+    resolved_category, original_category, category_status = await resolve_category(
+        body.category, agent.account_id, db
+    )
     resolved_body = body.model_copy(update={"category": resolved_category})
 
     # Lock agent row to serialise concurrent requests for the same agent.
@@ -142,6 +144,7 @@ async def create_purchase_request(
             currency=request_currency,
             category=resolved_category,
             original_category=original_category,
+            category_status=category_status,
             merchant=body.merchant_name,
             description=body.description,
             agent_comment=body.agent_comment,
@@ -208,6 +211,7 @@ async def create_purchase_request(
                 currency=request_currency,
                 category=resolved_category,
                 original_category=original_category,
+                category_status=category_status,
                 merchant=body.merchant_name,
                 description=body.description,
                 agent_comment=body.agent_comment,
@@ -275,6 +279,7 @@ async def create_purchase_request(
             currency=request_currency,
             category=resolved_category,
             original_category=original_category,
+            category_status=category_status,
             merchant=body.merchant_name,
             description=body.description,
             agent_comment=body.agent_comment,
@@ -357,6 +362,7 @@ async def create_purchase_request(
         currency=request_currency,
         category=resolved_category,
         original_category=original_category,
+        category_status=category_status,
         merchant=body.merchant_name,
         description=body.description,
         agent_comment=body.agent_comment,
@@ -421,6 +427,25 @@ async def create_purchase_request(
             ),
         )
     )
+
+    if category_status == "unresolved":
+        asyncio.create_task(
+            dispatch_notification(
+                None,
+                redis,
+                agent.account_id,
+                NotificationEvent(
+                    event_type="unresolved_category",
+                    request_id=req.id,
+                    agent_name=agent.name,
+                    amount=str(body.amount),
+                    currency=request_currency,
+                    category="other",
+                    merchant=body.merchant_name,
+                    agent_comment=f"Unknown category: {body.category}",
+                ),
+            )
+        )
 
     resp = PurchaseRequestResponse(
         request_id=req.id,
@@ -656,5 +681,13 @@ async def get_policy(
 
 
 @router.get("/categories")
-async def get_categories():
-    return {"categories": sorted(CATEGORIES)}
+async def get_categories(
+    agent: Agent = Depends(get_agent_by_token),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Category.name)
+        .where(Category.account_id == agent.account_id, Category.is_active.is_(True))
+        .order_by(Category.name)
+    )
+    return {"categories": [row[0] for row in result.all()]}

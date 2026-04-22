@@ -38,7 +38,7 @@ describe("DashboardPage", () => {
       ).toBeInTheDocument();
     });
 
-    it("creates agent and redirects to setup", async () => {
+    it("creates agent and shows token before setup", async () => {
       const user = userEvent.setup();
       renderDashboard();
       await screen.findByText("Create Your AI Agent");
@@ -49,12 +49,15 @@ describe("DashboardPage", () => {
       );
       await user.click(screen.getByText("Create Agent"));
 
-      await waitFor(() => {
-        expect(localStorage.getItem("agent_id")).toBeTruthy();
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining("/dashboard/agent/setup?id="),
-        );
-      });
+      // Token is shown once after creation
+      await screen.findByText("Agent Created");
+      expect(localStorage.getItem("agent_id")).toBeTruthy();
+
+      // Click Continue to navigate to setup
+      await user.click(screen.getByText("Continue to Policy Setup"));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining("/dashboard/agent/setup?id="),
+      );
     });
 
     it("shows error on create failure", async () => {

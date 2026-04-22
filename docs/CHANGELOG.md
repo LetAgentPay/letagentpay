@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-04-22
+
+### Added
+- **Custom categories** — categories are now per-account instead of 16 hardcoded global ones
+  - CRUD API: `GET/POST/PUT/DELETE /api/v1/me/categories` + alias management
+  - Import 16 default categories with 137 aliases in one click
+  - AI-powered alias generation for custom categories
+  - Unknown categories resolve to "other" and are flagged for owner review
+  - Dashboard UI: Categories section in Settings
+  - `GET /agent-api/categories` now returns per-account categories (requires auth)
+  - AI Policy Assistant uses account's custom categories
+  - Policy validation against account's category set
+- **Agent token hashing** — tokens stored as SHA-256 hashes, lookup by hash
+  - Token shown only on creation and regeneration
+  - `POST /agents/{id}/regenerate-token` — token rotation endpoint
+  - Token masking in API responses (`agt_••••••••••••`)
+  - Dashboard: token shown at creation, then regenerate-only
+- **Reconciliation service** — periodic Redis ↔ PostgreSQL counter sync (hourly)
+- **x402 budget correction** — adjust budget when actual_amount differs from authorized_amount
+  - tx_hash uniqueness (one tx cannot close two authorizations)
+
+### Improved
+- **Security hardening:**
+  - Content-Security-Policy and Strict-Transport-Security headers
+  - XSS protection in approval/rejection HTML pages
+  - SSE newline sanitization
+  - Telegram webhook secret verification
+  - Wallet address validation (EVM / Solana)
+  - tx_hash format validation (EVM / Solana)
+  - Input limits on all Decimal fields (max 9,999,999)
+  - OTP verification rate-limit per email
+  - Atomic Redis counter operations (Lua scripts, floor-clamped decrements)
+- Fail-closed for invalid schedule format (previously allowed requests through)
+- Crypto exchange rate cache TTL reduced from 60s to 15s
+
+### Breaking changes
+- `GET /agent-api/categories` now requires authentication (Bearer token)
+- Invalid schedule format now denies requests (fail-closed) instead of allowing
+
 ## [1.4.0] - 2026-04-18
 
 ### Added

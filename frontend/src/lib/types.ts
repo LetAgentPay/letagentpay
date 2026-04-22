@@ -136,6 +136,24 @@ export interface BudgetRule {
   spent: string | null;
 }
 
+// --- Categories ---
+
+export interface CategoryAlias {
+  id: string;
+  alias: string;
+  is_auto_generated: boolean;
+  created_at: string;
+}
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  display_name: string | null;
+  is_active: boolean;
+  aliases: CategoryAlias[];
+  created_at: string;
+}
+
 // --- Notification Channels ---
 
 export interface NotificationChannelResponse {

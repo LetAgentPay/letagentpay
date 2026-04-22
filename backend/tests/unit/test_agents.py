@@ -325,3 +325,68 @@ class TestAutoReplenish:
         data = resp.json()
         assert data["auto_replenish"] is not None
         assert data["auto_replenish"]["enabled"] is True
+
+
+class TestRegenerateToken:
+    async def test_regenerate_token(self, auth_client, account, agent):
+        old_token = agent.token
+        resp = await auth_client.post(
+            f"/api/v1/agents/{agent.id}/regenerate-token",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["token"].startswith("agt_")
+        assert data["token"] != old_token
+
+    async def test_regenerate_token_invalidates_old(
+        self, auth_client, client, account, agent
+    ):
+        old_token = agent.token
+        # Regenerate
+        resp = await auth_client.post(
+            f"/api/v1/agents/{agent.id}/regenerate-token",
+        )
+        new_token = resp.json()["token"]
+
+        # Old token should not work
+        resp_old = await client.get(
+            "/api/v1/agent-api/budget",
+            headers={"Authorization": f"Bearer {old_token}"},
+        )
+        assert resp_old.status_code == 401
+
+        # New token should work
+        resp_new = await client.get(
+            "/api/v1/agent-api/budget",
+            headers={"Authorization": f"Bearer {new_token}"},
+        )
+        assert resp_new.status_code == 200
+
+    async def test_regenerate_token_unauthorized(self, client, agent):
+        resp = await client.post(
+            f"/api/v1/agents/{agent.id}/regenerate-token",
+        )
+        assert resp.status_code == 401
+
+    async def test_regenerate_token_not_found(self, auth_client, account):
+        resp = await auth_client.post(
+            "/api/v1/agents/nonexistent-id/regenerate-token",
+        )
+        assert resp.status_code == 404
+
+    async def test_token_masked_in_get(self, auth_client, account, agent):
+        """GET agent should return masked token, not plaintext."""
+        resp = await auth_client.get(f"/api/v1/agents/{agent.id}")
+        assert resp.status_code == 200
+        assert resp.json()["token"] == "agt_••••••••••••"
+
+    async def test_token_shown_on_create(self, auth_client, account):
+        """POST create agent should return real token (show once)."""
+        resp = await auth_client.post(
+            "/api/v1/agents",
+            json={"name": "Token Visible Agent"},
+        )
+        assert resp.status_code == 201
+        token = resp.json()["token"]
+        assert token.startswith("agt_")
+        assert token != "agt_••••••••••••"

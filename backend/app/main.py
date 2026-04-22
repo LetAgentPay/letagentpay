@@ -9,6 +9,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+logger = logging.getLogger(__name__)
+
 from app.config import settings
 from app.redis import close_redis, init_redis
 from app.services import telegram as _telegram
@@ -82,6 +84,11 @@ async def lifespan(app: FastAPI):
 
     expiry_task = asyncio.create_task(expire_pending_requests_loop())
 
+    # Reconciliation: periodic Redis ↔ DB counter sync
+    from app.services.reconciliation import reconciliation_loop
+
+    reconciliation_task = asyncio.create_task(reconciliation_loop())
+
     # Playground: periodic cleanup of expired sessions
     playground_task = None
     if settings.playground_enabled:
@@ -113,6 +120,9 @@ async def lifespan(app: FastAPI):
     expiry_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await expiry_task
+    reconciliation_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await reconciliation_task
     if telegram_task:
         telegram_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -148,6 +158,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = (
             "camera=(), microphone=(), geolocation=()"
         )
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"
+        )
+        if settings.cookie_secure:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
         return response
 
 
@@ -201,7 +218,7 @@ class SlidingSessionMiddleware(BaseHTTPMiddleware):
                     max_age=settings.access_token_expire_days * 86400,
                 )
         except Exception:
-            pass  # Never break the response over token refresh
+            logger.debug("Token refresh failed", exc_info=True)
 
         return response
 
@@ -254,6 +271,7 @@ from app.routers import (  # noqa: E402
     agents,
     auth,
     budget_rules,
+    categories,
     config,
     events,
     me,
@@ -279,6 +297,7 @@ app.include_router(agent_api.router)
 app.include_router(events.router)
 app.include_router(push.router)
 app.include_router(budget_rules.router)
+app.include_router(categories.router)
 app.include_router(notifications.router)
 app.include_router(telegram.router)
 app.include_router(playground.router)

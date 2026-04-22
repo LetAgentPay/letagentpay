@@ -438,10 +438,10 @@ class TestCheckTimeWindow:
         assert r.result == "fail"
 
     def test_invalid_window_format(self):
-        """Lines 131-132: invalid format returns pass."""
+        """Lines 131-132: invalid format returns fail (fail-closed)."""
         now = datetime(2026, 3, 18, 12, 0, tzinfo=timezone.utc)
         r = _check_time_window(now, "invalid")
-        assert r.result == "pass"
+        assert r.result == "fail"
         assert "invalid" in r.detail.lower()
 
 

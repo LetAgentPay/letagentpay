@@ -208,17 +208,21 @@ If `actual_amount` differs from the requested amount, the agent's balance is adj
 
 ### GET /categories — List categories
 
+Requires Bearer token authentication. Returns categories defined for the authenticated agent's account.
+
+Categories are **per-account**, not global. New accounts start with just the `"other"` category. Account owners can import 16 default categories with one click from the dashboard, or create custom categories with optional aliases (synonyms). If a purchase request uses an unknown category, it is resolved to `"other"` and flagged for user review.
+
 **Response (200):**
 
 ```json
 {
   "categories": [
-    "clothing", "education", "electronics", "entertainment",
-    "food_delivery", "gas", "groceries", "health", "household",
-    "other", "restaurants", "subscriptions", "taxi", "transport"
+    "groceries", "food_delivery", "subscriptions", "other"
   ]
 }
 ```
+
+The actual list depends on which categories the account owner has configured.
 
 ---
 

@@ -86,9 +86,24 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Fail fast if JWT secret is not configured in production
-if settings.jwt_secret == "change-me-in-production" and settings.cookie_secure:
+# Fail fast if JWT secret is not configured in production.
+# Allow default only for local development (localhost frontend URL).
+_is_local = "localhost" in settings.frontend_url or "127.0.0.1" in settings.frontend_url
+if settings.jwt_secret == "change-me-in-production" and not _is_local:
     raise RuntimeError(
         "JWT_SECRET must be set in production. "
-        "Update your .env file with a secure random value."
+        "Update your .env file with a secure random value "
+        '(e.g. python -c "import secrets; print(secrets.token_urlsafe(32))").'
     )
+
+if settings.self_hosted:
+    if not settings.admin_password:
+        raise RuntimeError(
+            "ADMIN_PASSWORD must be set for self-hosted mode. "
+            "Choose a strong password (at least 12 characters)."
+        )
+    if len(settings.admin_password) < 12:
+        raise RuntimeError(
+            "ADMIN_PASSWORD is too short (minimum 12 characters). "
+            "Choose a stronger password."
+        )

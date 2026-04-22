@@ -18,6 +18,17 @@ _bot_username: str | None = None
 _API_BASE = "https://api.telegram.org/bot"
 
 
+def get_webhook_secret() -> str | None:
+    """Derive a stable webhook verification secret from bot token."""
+    if not settings.telegram_bot_token:
+        return None
+    import hashlib
+
+    return hashlib.sha256(
+        f"tg-webhook:{settings.telegram_bot_token}".encode()
+    ).hexdigest()[:64]
+
+
 class TelegramAPIError(Exception):
     """Raised when a Telegram API call fails."""
 
@@ -55,12 +66,16 @@ async def setup_webhook() -> None:
 
     try:
         async with httpx.AsyncClient() as client:
+            payload = {
+                "url": webhook_url,
+                "allowed_updates": ["message", "callback_query"],
+            }
+            secret = get_webhook_secret()
+            if secret:
+                payload["secret_token"] = secret
             resp = await client.post(
                 f"{_API_BASE}{settings.telegram_bot_token}/setWebhook",
-                json={
-                    "url": webhook_url,
-                    "allowed_updates": ["message", "callback_query"],
-                },
+                json=payload,
                 timeout=10,
             )
             resp.raise_for_status()

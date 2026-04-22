@@ -30,7 +30,7 @@ const { text } = await generateText({
 | --- | --- |
 | `requestPurchase` | Request approval to spend money (call BEFORE any purchase) |
 | `checkBudget` | Check current budget, spent, held, and remaining |
-| `listCategories` | List valid spending categories |
+| `listCategories` | List account's custom spending categories |
 | `myRequests` | List recent purchase requests (optionally filter by status) |
 | `confirmPurchase` | Confirm or report failure after completing a purchase |
 
@@ -90,7 +90,7 @@ const tools = createLetAgentPayTools({
 
 ## Categories
 
-Categories are user-defined per agent. Use the `listCategories` tool to get the valid list at runtime. Unknown categories are automatically mapped to the closest match by the server.
+Categories are per-account and fully customizable. New accounts start with just `"other"` — import the 16 default categories with one click from the dashboard, or create your own with optional aliases. Use the `listCategories` tool to get the valid list at runtime. Unknown categories are resolved to `"other"` and flagged for review in the dashboard.
 
 ## Resources
 

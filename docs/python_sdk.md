@@ -52,8 +52,10 @@ print(f"Budget: {budget.budget}, spent: {budget.spent}, held: {budget.held}, rem
 
 ### List Categories
 
+Returns categories configured for the authenticated agent's account (per-account, not global).
+
 ```python
-categories = client.list_categories()  # ["groceries", "subscriptions", "transport", ...]
+categories = client.list_categories()  # ["groceries", "subscriptions", "other", ...]
 ```
 
 ### My Requests
@@ -158,7 +160,7 @@ client = LetAgentPay(
 | `confirm_purchase(request_id, success, actual_amount?, receipt_url?)` | `ConfirmResult` | Confirm purchase result |
 | `check_budget()` | `BudgetInfo` | Check budget |
 | `get_policy()` | `dict` | Get current policy |
-| `list_categories()` | `list[str]` | List available categories |
+| `list_categories()` | `list[str]` | List account's custom categories |
 | `my_requests(status?, limit?, offset?)` | `RequestList` | List agent requests |
 
 ### Response Types

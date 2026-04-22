@@ -43,7 +43,7 @@ export function mockAgent(overrides?: Partial<AgentResponse>): AgentResponse {
       allowed_categories: ["groceries", "food_delivery"],
     },
     policy_text: "Groceries and food delivery",
-    token: "agt_test_token_abc123",
+    token: "agt_••••••••••••",
     auto_replenish: null,
     created_at: "2026-01-01T00:00:00",
     ...overrides,

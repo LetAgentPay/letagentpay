@@ -1,3 +1,5 @@
+from html import escape
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +21,7 @@ def _html_page(title: str, message: str, success: bool) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title} — LetAgentPay</title>
+  <title>{escape(title)} — LetAgentPay</title>
   <style>
     body {{
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -46,8 +48,8 @@ def _html_page(title: str, message: str, success: bool) -> str:
 <body>
   <div class="card">
     <div class="icon">{icon}</div>
-    <h1>{title}</h1>
-    <p>{message}</p>
+    <h1>{escape(title)}</h1>
+    <p>{escape(message)}</p>
     <a href="{dashboard_url}">Open Dashboard</a>
   </div>
 </body>

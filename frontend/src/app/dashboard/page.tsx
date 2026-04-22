@@ -19,8 +19,9 @@ import { useAgentEvents } from "@/lib/hooks/use-agent-events";
 import type { AgentResponse } from "@/lib/types";
 import { SpendingSummary } from "@/components/spending-summary";
 import { X402Stats } from "@/components/x402-stats";
-import { Settings, Plus, Link as LinkIcon, AlertTriangle, Circle, Pause } from "lucide-react";
+import { Settings, Plus, Link as LinkIcon, AlertTriangle, Circle, Pause, Copy, Check } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -39,6 +40,8 @@ export default function DashboardPage() {
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [createdToken, setCreatedToken] = useState<{ token: string; agentId: string } | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
 
   const loadingRef = useRef(false);
   const loadAgents = useCallback(async () => {
@@ -99,12 +102,61 @@ export default function DashboardPage() {
       setName("");
       setDescription("");
       setShowCreate(false);
-      router.push(`/dashboard/agent/setup?id=${data.id}`);
+      setCreatedToken({ token: data.token, agentId: data.id });
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Failed to create agent");
     } finally {
       setCreating(false);
     }
+  }
+
+  if (createdToken) {
+    return (
+      <div className="mx-auto max-w-lg space-y-6 py-12">
+        <h2 className="text-xl font-bold text-center">Agent Created</h2>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Your agent token is shown below. Copy it now — it won&apos;t be shown again.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded bg-muted px-3 py-2 text-sm break-all">
+                {createdToken.token}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(createdToken.token);
+                  setTokenCopied(true);
+                  toast.success("Token copied!");
+                  setTimeout(() => setTokenCopied(false), 2000);
+                }}
+              >
+                {tokenCopied ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-amber-600">
+              Store this token securely. You can regenerate it later, but the current one will be invalidated.
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setCreatedToken(null);
+                router.push(`/dashboard/agent/setup?id=${createdToken.agentId}`);
+              }}
+            >
+              Continue to Policy Setup
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (loading) {

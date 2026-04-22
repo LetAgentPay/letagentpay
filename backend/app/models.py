@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 import uuid
 from datetime import datetime
@@ -13,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -61,6 +63,12 @@ class Account(Base):
     notification_channels: Mapped[list["NotificationChannel"]] = relationship(
         back_populates="account"
     )
+    categories: Mapped[list["Category"]] = relationship(back_populates="account")
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 hash of agent token for secure storage/lookup."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class Agent(Base):
@@ -84,6 +92,9 @@ class Agent(Base):
         index=True,
         default=lambda: f"agt_{secrets.token_urlsafe(32)}",
     )
+    token_hash: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True, nullable=True
+    )
     is_sandbox: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_replenish_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_replenish_threshold: Mapped[Decimal | None] = mapped_column(
@@ -106,6 +117,17 @@ class Agent(Base):
     requests: Mapped[list["PurchaseRequest"]] = relationship(back_populates="agent")
     policy_logs: Mapped[list["PolicyLog"]] = relationship(back_populates="agent")
     wallets: Mapped[list["AgentWallet"]] = relationship(back_populates="agent")
+
+
+@event.listens_for(Agent, "before_insert")
+def _agent_set_token_hash(mapper, connection, target):
+    """Ensure token_hash is set before INSERT (covers column defaults).
+
+    Note: this event fires reliably on sync drivers (psycopg2) and PostgreSQL.
+    For async drivers, call ensure_token_hash() after flush as a safety net.
+    """
+    if target.token and not target.token_hash:
+        target.token_hash = hash_token(target.token)
 
 
 class PurchaseRequest(Base):
@@ -132,6 +154,8 @@ class PurchaseRequest(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+
+    category_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Settlement fields (x402 / Stripe / manual)
     settlement_method: Mapped[str | None] = mapped_column(String(20))
@@ -282,6 +306,56 @@ class NotificationLog(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
+    )
+
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    name: Mapped[str] = mapped_column(String(50))
+    display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    account: Mapped["Account"] = relationship(back_populates="categories")
+    aliases: Mapped[list["CategoryAlias"]] = relationship(
+        back_populates="category", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "name", name="uq_category_account_name"),
+    )
+
+
+class CategoryAlias(Base):
+    __tablename__ = "category_aliases"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    category_id: Mapped[str] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE")
+    )
+    alias: Mapped[str] = mapped_column(String(100))
+    is_auto_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    category: Mapped["Category"] = relationship(back_populates="aliases")
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "alias", name="uq_alias_account_alias"),
     )
 
 

@@ -10,20 +10,9 @@ logger = logging.getLogger(__name__)
 from app.models import Account, Agent, BudgetRule
 from app.schemas import CreatePurchaseRequest, Policy, PolicyCheckResult
 from app.services.spending import (
-    get_account_daily_held,
-    get_account_daily_spent,
-    get_account_monthly_held,
-    get_account_monthly_spent,
-    get_account_rule_held,
-    get_account_weekly_held,
-    get_account_weekly_spent,
-    get_daily_held,
-    get_daily_spent,
-    get_monthly_held,
-    get_monthly_spent,
-    get_rule_spent,
-    get_weekly_held,
-    get_weekly_spent,
+    get_account_counters_atomic,
+    get_agent_counters_atomic,
+    get_rule_counters_atomic,
 )
 
 
@@ -140,7 +129,9 @@ def _check_time_window(now: datetime, window: str) -> PolicyCheckResult:
         )
     except (ValueError, AttributeError):
         return PolicyCheckResult(
-            rule="schedule", result="pass", detail="Invalid schedule format, allowing"
+            rule="schedule",
+            result="fail",
+            detail="Invalid schedule format, denying (fail-closed)",
         )
 
 
@@ -265,25 +256,22 @@ async def check_policy(
     # 4. Schedule
     checks.append(_check_schedule(policy, timezone))
 
-    # 5. Daily limit (spent + held)
-    daily_spent = await get_daily_spent(redis, agent.id, currency, timezone)
-    daily_held = await get_daily_held(redis, agent.id, currency, timezone)
+    # 5-7. Daily/Weekly/Monthly limits (atomic read via Lua script)
+    counters = await get_agent_counters_atomic(redis, agent.id, currency, timezone)
     checks.append(
-        _check_daily_limit(request.amount, daily_spent + daily_held, policy, timezone)
+        _check_daily_limit(
+            request.amount, counters.daily_spent + counters.daily_held, policy, timezone
+        )
     )
-
-    # 6. Weekly limit (spent + held)
-    weekly_spent = await get_weekly_spent(redis, agent.id, currency, timezone)
-    weekly_held = await get_weekly_held(redis, agent.id, currency, timezone)
     checks.append(
-        _check_weekly_limit(request.amount, weekly_spent + weekly_held, policy)
+        _check_weekly_limit(
+            request.amount, counters.weekly_spent + counters.weekly_held, policy
+        )
     )
-
-    # 7. Monthly limit (spent + held)
-    monthly_spent = await get_monthly_spent(redis, agent.id, currency, timezone)
-    monthly_held = await get_monthly_held(redis, agent.id, currency, timezone)
     checks.append(
-        _check_monthly_limit(request.amount, monthly_spent + monthly_held, policy)
+        _check_monthly_limit(
+            request.amount, counters.monthly_spent + counters.monthly_held, policy
+        )
     )
 
     # 8. Budget (remaining minus held)
@@ -342,18 +330,12 @@ async def evaluate_budget_rules(
         top.sort(key=lambda r: r.limit_amount)
         selected.append(top[0])
 
-    # 6. Check each selected rule (spent + held)
+    # 6. Check each selected rule (spent + held) — atomic read via Lua script
     checks: list[PolicyCheckResult] = []
-    acct_daily = await get_account_daily_spent(redis, account.id, currency, timezone)
-    acct_daily += await get_account_daily_held(redis, account.id, currency, timezone)
-    acct_weekly = await get_account_weekly_spent(redis, account.id, currency, timezone)
-    acct_weekly += await get_account_weekly_held(redis, account.id, currency, timezone)
-    acct_monthly = await get_account_monthly_spent(
-        redis, account.id, currency, timezone
-    )
-    acct_monthly += await get_account_monthly_held(
-        redis, account.id, currency, timezone
-    )
+    acct = await get_account_counters_atomic(redis, account.id, currency, timezone)
+    acct_daily = acct.daily_spent + acct.daily_held
+    acct_weekly = acct.weekly_spent + acct.weekly_held
+    acct_monthly = acct.monthly_spent + acct.monthly_held
 
     for rule in selected:
         if rule.limit_type == "daily":
@@ -413,8 +395,7 @@ async def evaluate_budget_rules(
         elif rule.limit_type == "total":
             # For temporal total rules, use per-rule Redis counter
             if rule.start_at and rule.end_at:
-                rule_spent = await get_rule_spent(redis, account.id, rule.id, currency)
-                rule_held = await get_account_rule_held(
+                rule_spent, rule_held = await get_rule_counters_atomic(
                     redis, account.id, rule.id, currency
                 )
                 projected = rule_spent + rule_held + amount

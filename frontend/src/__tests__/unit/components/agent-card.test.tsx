@@ -27,56 +27,16 @@ describe("AgentCard", () => {
     expect(screen.queryByText("A test agent")).not.toBeInTheDocument();
   });
 
-  it("token hidden by default", () => {
+  it("token is masked by default", () => {
     render(<AgentCard agent={mockAgent()} currency="USD" onUpdate={vi.fn()} />);
     expect(screen.getByText("agt_••••••••••••")).toBeInTheDocument();
-    expect(
-      screen.queryByText("agt_test_token_abc123"),
-    ).not.toBeInTheDocument();
   });
 
-  function findEyeButton() {
-    // The eye toggle is a ghost icon button with h-7 w-7 class, near the token
+  it("has regenerate token button", () => {
+    render(<AgentCard agent={mockAgent()} currency="USD" onUpdate={vi.fn()} />);
     const buttons = screen.getAllByRole("button");
-    const eyeButtons = buttons.filter(
-      (b) => b.className.includes("h-7") && b.className.includes("w-7"),
-    );
-    // The last h-7 w-7 button is the eye toggle (copy button only appears after reveal)
-    return eyeButtons[eyeButtons.length - 1];
-  }
-
-  it("clicking eye reveals token", async () => {
-    const user = userEvent.setup();
-    render(<AgentCard agent={mockAgent()} currency="USD" onUpdate={vi.fn()} />);
-    await user.click(findEyeButton());
-    expect(screen.getByText("agt_test_token_abc123")).toBeInTheDocument();
-  });
-
-  it("clicking revealed token copies to clipboard", async () => {
-    const user = userEvent.setup();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
-    render(<AgentCard agent={mockAgent()} currency="USD" onUpdate={vi.fn()} />);
-    await user.click(findEyeButton());
-    await user.click(screen.getByText("agt_test_token_abc123"));
-    expect(writeText).toHaveBeenCalledWith("agt_test_token_abc123");
-  });
-
-  it("copy button copies token to clipboard", async () => {
-    const user = userEvent.setup();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
-    render(<AgentCard agent={mockAgent()} currency="USD" onUpdate={vi.fn()} />);
-    const eyeBtn = findEyeButton();
-    await user.click(eyeBtn);
-    // After revealing, there are now two h-7 w-7 buttons: copy and eye toggle
-    const iconButtons = screen.getAllByRole("button").filter(
-      (b) => b.className.includes("h-7") && b.className.includes("w-7"),
-    );
-    // The copy button is the first one (before the eye toggle)
-    const copyBtn = iconButtons.find((b) => b !== eyeBtn)!;
-    await user.click(copyBtn);
-    expect(writeText).toHaveBeenCalledWith("agt_test_token_abc123");
+    const regenerateBtn = buttons.find((b) => b.title === "Regenerate token");
+    expect(regenerateBtn).toBeInTheDocument();
   });
 
   it("shows Pause button for active agent", () => {

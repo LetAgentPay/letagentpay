@@ -52,7 +52,7 @@ export const handlers = [
   http.post(`${API}/agents`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(
-      mockAgent({ name: body.name as string, policy: null }),
+      mockAgent({ name: body.name as string, policy: null, token: "agt_new_token_shown_once" }),
       { status: 201 },
     );
   }),

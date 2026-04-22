@@ -82,10 +82,28 @@ async def get_agent_by_token(
         raise HTTPException(status_code=401, detail="Missing bearer token")
 
     token = auth_header[7:]
+    from app.models import hash_token
+
+    token_hashed = hash_token(token)
+    # Primary lookup: by hash (secure, indexed)
     result = await db.execute(
-        select(Agent).options(joinedload(Agent.account)).where(Agent.token == token)
+        select(Agent)
+        .options(joinedload(Agent.account))
+        .where(Agent.token_hash == token_hashed)
     )
     agent = result.scalar_one_or_none()
+    # Fallback: plaintext lookup for agents created before migration 0004
+    if not agent:
+        result = await db.execute(
+            select(Agent)
+            .options(joinedload(Agent.account))
+            .where(Agent.token == token, Agent.token_hash.is_(None))
+        )
+        agent = result.scalar_one_or_none()
+        # Backfill token_hash for this agent
+        if agent:
+            agent.token_hash = token_hashed
+            await db.commit()
     if not agent:
         token_preview = f"{token[:8]}..." if len(token) > 8 else token
         logger.warning("Invalid agent token from ip=%s token=%s", ip, token_preview)

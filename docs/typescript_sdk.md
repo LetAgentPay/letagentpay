@@ -50,9 +50,11 @@ console.log(`Budget: ${budget.budget}, spent: ${budget.spent}, held: ${budget.he
 
 ### List Categories
 
+Returns categories configured for the authenticated agent's account (per-account, not global).
+
 ```typescript
 const categories = await client.listCategories();
-// ["groceries", "subscriptions", "transport", ...]
+// ["groceries", "subscriptions", "other", ...]
 ```
 
 ### My Requests
@@ -154,7 +156,7 @@ const client = new LetAgentPay({
 | `confirmPurchase(requestId, options)` | `ConfirmResult` | Confirm purchase result |
 | `checkBudget()` | `BudgetInfo` | Check budget |
 | `getPolicy()` | `object` | Get current policy |
-| `listCategories()` | `string[]` | List available categories |
+| `listCategories()` | `string[]` | List account's custom categories |
 | `myRequests(options?)` | `RequestList` | List agent requests |
 
 ### Response Types

@@ -41,7 +41,7 @@ async def _event_generator(agent_id: str, request: Request):
                 break
             try:
                 data = await asyncio.wait_for(queue.get(), timeout=heartbeat_sec)
-                yield f"data: {data}\n\n"
+                yield f"data: {data.replace(chr(10), '')}\n\n"
             except asyncio.TimeoutError:
                 yield ": heartbeat\n\n"
     finally:

@@ -14,8 +14,8 @@ import { EESettingsSection } from "@/lib/ee-hooks";
 import { NotificationSettings } from "@/components/notification-settings";
 import { formatMoney } from "@/lib/format";
 import { toast } from "sonner";
-import { AlertTriangle, Plus, Trash2, ArchiveRestore } from "lucide-react";
-import type { AgentResponse, BudgetRule } from "@/lib/types";
+import { AlertTriangle, ChevronDown, ChevronRight, Plus, Sparkles, Trash2, ArchiveRestore } from "lucide-react";
+import type { AgentResponse, BudgetRule, CategoryResponse } from "@/lib/types";
 
 const CURRENCIES = [
   "USD", "EUR", "GBP", "JPY", "CNY", "KRW", "INR", "BRL", "RUB", "TRY",
@@ -152,6 +152,8 @@ function SettingsContent() {
 
       <NotificationSettings />
 
+      <CategoriesSection />
+
       <BudgetRulesSection currency={account.currency} />
 
       <Separator />
@@ -278,6 +280,303 @@ function KillSwitchSection({ paused, refresh }: { paused: boolean; refresh: () =
 }
 
 const LIMIT_TYPES = ["daily", "weekly", "monthly", "total"] as const;
+function CategoriesSection() {
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [newAlias, setNewAlias] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await api.listCategories();
+      setCategories(data);
+    } catch {
+      toast.error("Failed to load categories");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  const handleCreate = async () => {
+    const name = newName.trim().toLowerCase().replace(/\s+/g, "_").replace(/-/g, "_");
+    if (!name) return;
+    try {
+      await api.createCategory({
+        name,
+        display_name: newDisplayName.trim() || undefined,
+      });
+      setNewName("");
+      setNewDisplayName("");
+      setShowForm(false);
+      toast.success(`Category "${name}" created`);
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to create category");
+    }
+  };
+
+  const handleToggle = async (cat: CategoryResponse) => {
+    try {
+      await api.updateCategory(cat.id, { is_active: !cat.is_active });
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to update category");
+    }
+  };
+
+  const handleDelete = async (cat: CategoryResponse) => {
+    try {
+      await api.deleteCategory(cat.id);
+      toast.success(`Category "${cat.name}" deleted`);
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to delete category");
+    }
+  };
+
+  const handleAddAlias = async (categoryId: string) => {
+    const alias = newAlias.trim();
+    if (!alias) return;
+    try {
+      await api.addCategoryAlias(categoryId, alias);
+      setNewAlias("");
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to add alias");
+    }
+  };
+
+  const handleRemoveAlias = async (categoryId: string, aliasId: string) => {
+    try {
+      await api.removeCategoryAlias(categoryId, aliasId);
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to remove alias");
+    }
+  };
+
+  const handleImportDefaults = async () => {
+    setImporting(true);
+    try {
+      await api.importDefaultCategories();
+      toast.success("Default categories imported");
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to import defaults");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleGenerateAliases = async (categoryId: string) => {
+    setGenerating(categoryId);
+    try {
+      const created = await api.generateAliases(categoryId);
+      if (created.length > 0) {
+        toast.success(`Generated ${created.length} aliases`);
+      } else {
+        toast.info("No new aliases generated");
+      }
+      await loadCategories();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : "Failed to generate aliases");
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>Categories</CardTitle></CardHeader>
+        <CardContent><p className="text-sm text-muted-foreground">Loading...</p></CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Categories</CardTitle>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImportDefaults}
+              disabled={importing}
+            >
+              {importing ? "Importing..." : "Import Defaults"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowForm(!showForm)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {showForm && (
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Label className="text-xs">Name (snake_case)</Label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="api_costs"
+                className="h-8"
+              />
+            </div>
+            <div className="flex-1">
+              <Label className="text-xs">Display Name</Label>
+              <Input
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="API Costs"
+                className="h-8"
+              />
+            </div>
+            <Button size="sm" onClick={handleCreate} className="h-8">
+              Create
+            </Button>
+          </div>
+        )}
+
+        {categories.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No categories configured. Import defaults or create custom categories.
+          </p>
+        )}
+
+        {categories.map((cat) => {
+          const isExpanded = expandedId === cat.id;
+          return (
+            <div key={cat.id} className="border rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div
+                  className="flex items-center gap-2 cursor-pointer flex-1"
+                  onClick={() => {
+                    setNewAlias("");
+                    setExpandedId(isExpanded ? null : cat.id);
+                  }}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="font-mono text-sm">{cat.name}</span>
+                  {cat.display_name && cat.display_name !== cat.name && (
+                    <span className="text-sm text-muted-foreground">
+                      ({cat.display_name})
+                    </span>
+                  )}
+                  {!cat.is_active && (
+                    <Badge variant="secondary" className="text-xs">
+                      inactive
+                    </Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {cat.aliases.length} aliases
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  {cat.name !== "other" && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleToggle(cat)}
+                      >
+                        {cat.is_active ? "Disable" : "Enable"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-destructive"
+                        onClick={() => handleDelete(cat)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="mt-3 ml-6 space-y-2">
+                  <div className="flex flex-wrap gap-1">
+                    {cat.aliases.map((alias) => (
+                      <Badge
+                        key={alias.id}
+                        variant={alias.is_auto_generated ? "secondary" : "outline"}
+                        className="text-xs gap-1"
+                      >
+                        {alias.alias}
+                        <button
+                          type="button"
+                          className="ml-1 hover:text-destructive"
+                          aria-label={`Remove alias ${alias.alias}`}
+                          onClick={() => handleRemoveAlias(cat.id, alias.id)}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      value={newAlias}
+                      onChange={(e) => setNewAlias(e.target.value)}
+                      placeholder="Add alias..."
+                      className="h-7 text-xs flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddAlias(cat.id);
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => handleAddAlias(cat.id)}
+                    >
+                      Add
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => handleGenerateAliases(cat.id)}
+                      disabled={generating === cat.id}
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      {generating === cat.id ? "..." : "Generate"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function BudgetRulesSection({ currency }: { currency: string }) {

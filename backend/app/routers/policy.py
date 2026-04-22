@@ -8,11 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_account, get_owner_agent
-from app.models import Account, PolicyLog
+from app.models import Account, Category, PolicyLog
 from app.schemas import Policy, PolicyAIRequest, PolicyAIResponse
 from app.services.ai_policy import convert_text_to_policy
 
 router = APIRouter(prefix="/api/v1/agents/{agent_id}/policy", tags=["policy"])
+
+
+async def _get_account_category_names(db: AsyncSession, account_id: str) -> list[str]:
+    result = await db.execute(
+        select(Category.name).where(
+            Category.account_id == account_id, Category.is_active.is_(True)
+        )
+    )
+    return [row[0] for row in result.all()]
 
 
 @router.get("")
@@ -40,12 +49,15 @@ async def ai_policy_preview(
             detail="AI policy generation is not configured. Set ANTHROPIC_API_KEY or configure the policy manually via JSON.",
         )
 
+    account_cats = await _get_account_category_names(db, account.id)
+
     try:
         result = await convert_text_to_policy(
             message=body.message,
             chat_history=body.chat_history,
             user_timezone=account.timezone,
             current_policy=agent.policy,
+            account_categories=account_cats or None,
         )
     except (ValueError, anthropic.APIError) as e:
         raise HTTPException(
@@ -127,6 +139,27 @@ async def update_policy(
     db: AsyncSession = Depends(get_db),
 ):
     agent = await get_owner_agent(agent_id, account, db)
+
+    # Validate categories against account's categories (if any configured)
+    account_cats = set(await _get_account_category_names(db, account.id))
+    if account_cats:
+        for field_name in ("allowed_categories", "blocked_categories"):
+            cats = getattr(body, field_name, None)
+            if cats:
+                invalid = set(cats) - account_cats
+                if invalid:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unknown categories in {field_name}: {', '.join(sorted(invalid))}",
+                    )
+        if body.auto_approve and body.auto_approve.categories:
+            invalid = set(body.auto_approve.categories) - account_cats
+            if invalid:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown categories in auto_approve.categories: {', '.join(sorted(invalid))}",
+                )
+
     agent.policy = body.model_dump(exclude_none=True, mode="json")
 
     await db.commit()

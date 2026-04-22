@@ -19,7 +19,12 @@ from app.schemas import (
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
 
 
-def _agent_response(agent: Agent, pending_count: int = 0) -> AgentResponse:
+_MASKED_TOKEN = "agt_••••••••••••"
+
+
+def _agent_response(
+    agent: Agent, pending_count: int = 0, *, show_token: bool = False
+) -> AgentResponse:
     auto_replenish = None
     if agent.auto_replenish_enabled:
         auto_replenish = AutoReplenishResponse(
@@ -41,7 +46,7 @@ def _agent_response(agent: Agent, pending_count: int = 0) -> AgentResponse:
         pending_count=pending_count,
         policy=agent.policy,
         policy_text=agent.policy_text,
-        token=agent.token,
+        token=agent.token if show_token else _MASKED_TOKEN,
         auto_replenish=auto_replenish,
         created_at=agent.created_at,
     )
@@ -122,7 +127,7 @@ async def create_agent(
     db.add(agent)
     await db.commit()
     await db.refresh(agent)
-    return _agent_response(agent)
+    return _agent_response(agent, show_token=True)
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -158,6 +163,26 @@ async def update_agent(
     await db.commit()
     await db.refresh(agent)
     return _agent_response(agent)
+
+
+@router.post("/{agent_id}/regenerate-token", response_model=AgentResponse)
+async def regenerate_token(
+    agent_id: str,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a new API token for the agent. Old token is invalidated immediately."""
+    import secrets as _secrets
+
+    from app.models import hash_token
+
+    agent = await get_owner_agent(agent_id, account, db)
+    new_token = f"agt_{_secrets.token_urlsafe(32)}"
+    agent.token = new_token
+    agent.token_hash = hash_token(new_token)  # __init__ not called on update
+    await db.commit()
+    await db.refresh(agent)
+    return _agent_response(agent, show_token=True)
 
 
 @router.post("/{agent_id}/pause")

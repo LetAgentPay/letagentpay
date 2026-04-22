@@ -13,7 +13,7 @@ from decimal import Decimal
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -30,11 +30,14 @@ from app.schemas import (
     X402ReportRequest,
     X402ReportResponse,
 )
+from app.services.category_resolver import resolve_category
 from app.services.exchange_rates import DepegError, to_usd
 from app.services.rate_limit import check_rate_limit
 from app.services.realtime import publish_event
 from app.services.spending import (
     add_spent,
+    adjust_account_spent,
+    adjust_spent,
     get_daily_held,
     get_daily_spent,
     get_monthly_held,
@@ -118,7 +121,10 @@ async def authorize_x402_payment(
             )
 
     # 3. Check category (same rules as fiat purchases)
-    category = body.category
+    resolved_category, _, _ = await resolve_category(
+        body.category, agent.account_id, db
+    )
+    category = resolved_category
     if policy.allowed_categories and category not in policy.allowed_categories:
         return X402AuthorizeResponse(
             authorized=False,
@@ -285,13 +291,60 @@ async def report_x402_transaction(
     if pr.tx_hash:
         raise HTTPException(status_code=409, detail="Transaction already reported")
 
+    # Ensure tx_hash is globally unique (prevent one tx closing multiple authorizations)
+    existing = await db.execute(
+        select(PurchaseRequest).where(
+            PurchaseRequest.tx_hash == body.tx_hash,
+            PurchaseRequest.id != pr.id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=409,
+            detail="Transaction hash already used for another authorization",
+        )
+
     pr.tx_hash = body.tx_hash
-    if body.actual_amount_usd is not None:
-        pr.actual_amount = body.actual_amount_usd
     if body.resource_url:
         pr.description = body.resource_url[:2000]
     pr.completed_at = utcnow()
     pr.status = "completed"
+
+    # Correct budget if actual amount differs from authorized amount
+    if body.actual_amount_usd is not None:
+        pr.actual_amount = body.actual_amount_usd
+        authorized = pr.amount
+        actual = body.actual_amount_usd
+        delta = actual - authorized  # negative = refund, positive = overage
+
+        if delta != 0:
+            # Reload agent for account_id and timezone
+            agent_result = await db.execute(
+                select(Agent)
+                .options(joinedload(Agent.account))
+                .where(Agent.id == pr.agent_id)
+            )
+            agent_obj = agent_result.scalar_one()
+            timezone = agent_obj.account.timezone
+            currency = pr.currency or agent_obj.account.currency
+
+            # Adjust DB counters (clamp to 0 to prevent negative values)
+            await db.execute(
+                update(Agent)
+                .where(Agent.id == pr.agent_id)
+                .values(spent=func.greatest(Agent.spent + delta, 0))
+            )
+            await db.execute(
+                update(Account)
+                .where(Account.id == agent_obj.account_id)
+                .values(account_spent=func.greatest(Account.account_spent + delta, 0))
+            )
+
+            redis = get_redis()
+            await adjust_spent(redis, pr.agent_id, delta, currency, timezone)
+            await adjust_account_spent(
+                redis, agent_obj.account_id, delta, currency, timezone
+            )
 
     await db.commit()
 

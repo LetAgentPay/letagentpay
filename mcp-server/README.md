@@ -47,7 +47,7 @@ Get your agent token at [letagentpay.com](https://letagentpay.com) or from your 
 |------|-------------|
 | `request_purchase` | Submit a purchase request for policy evaluation |
 | `check_budget` | View current budget, spent, held, and remaining |
-| `list_categories` | List valid purchase categories |
+| `list_categories` | List account's custom purchase categories |
 | `my_requests` | Check status of a specific purchase request |
 | `list_requests` | List purchase requests with optional status filter |
 | `confirm_purchase` | Confirm purchase completion (or failure) |

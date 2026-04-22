@@ -12,8 +12,8 @@ import redis.asyncio as aioredis
 
 logger = logging.getLogger(__name__)
 
-# Cache TTL: 60s for crypto pairs, 300s for fiat
-_CRYPTO_TTL = 60
+# Cache TTL: 15s for crypto pairs, 300s for fiat
+_CRYPTO_TTL = 15
 _FIAT_TTL = 300
 
 # Stablecoin depeg thresholds

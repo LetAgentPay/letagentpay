@@ -5,7 +5,7 @@ import anthropic
 
 from app.config import settings
 
-POLICY_SYSTEM_PROMPT = """You are a policy configurator for LetAgentPay — a service that manages AI agent spending.
+_POLICY_SYSTEM_PROMPT_TEMPLATE = """You are a policy configurator for LetAgentPay — a service that manages AI agent spending.
 
 Convert user's natural language rules into a structured JSON policy.
 
@@ -14,10 +14,10 @@ Available fields:
 - weekly_limit: number
 - monthly_limit: number
 - per_request_limit: number (max single purchase)
-- allowed_categories: string[] (from: accommodation, clothing, education, electronics, entertainment, flights, food_delivery, gas, groceries, health, household, other, restaurants, subscriptions, taxi, transport)
+- allowed_categories: string[] (from: {categories})
 - blocked_categories: string[]
-- schedule: { timezone: string, default: { allow: "HH:MM-HH:MM" }, overrides: [{ days: string[], allow?: string, deny?: boolean, daily_limit?: number }] }
-- auto_approve: { enabled: boolean, max_amount?: number, categories?: string[] }
+- schedule: {{ timezone: string, default: {{ allow: "HH:MM-HH:MM" }}, overrides: [{{ days: string[], allow?: string, deny?: boolean, daily_limit?: number }}] }}
+- auto_approve: {{ enabled: boolean, max_amount?: number, categories?: string[] }}
 
 Rules:
 1. Respond with a JSON object with three keys: "policy" (the structured policy), "explanation" (a brief description of what changed in this request, in the same language the user wrote in), and "summary" (a complete human-readable description of ALL rules in the final policy, in the same language the user wrote in — this should describe the full policy, not just the latest change)
@@ -25,6 +25,8 @@ Rules:
 3. Infer timezone from context or default to user's timezone
 4. The user may write in any language — understand and convert
 5. Return ONLY valid JSON, no markdown fences, no extra text"""
+
+_DEFAULT_CATEGORIES_CSV = "accommodation, clothing, education, electronics, entertainment, flights, food_delivery, gas, groceries, health, household, other, restaurants, subscriptions, taxi, transport"
 
 _client: anthropic.AsyncAnthropic | None = None
 
@@ -71,6 +73,7 @@ async def convert_text_to_policy(
     chat_history: list[dict] | None = None,
     user_timezone: str = "America/New_York",
     current_policy: dict | None = None,
+    account_categories: list[str] | None = None,
 ) -> dict:
     """Convert natural language to structured policy JSON via Claude API.
 
@@ -79,7 +82,13 @@ async def convert_text_to_policy(
     """
     client = _get_client()
 
-    system = POLICY_SYSTEM_PROMPT + f"\n\nUser's timezone: {user_timezone}"
+    categories_csv = (
+        ", ".join(sorted(account_categories))
+        if account_categories
+        else _DEFAULT_CATEGORIES_CSV
+    )
+    system = _POLICY_SYSTEM_PROMPT_TEMPLATE.format(categories=categories_csv)
+    system += f"\n\nUser's timezone: {user_timezone}"
 
     if current_policy:
         system += f"\n\nThe agent already has this policy configured:\n{json.dumps(current_policy, indent=2)}\n\nIMPORTANT: The user wants to UPDATE the existing policy, not replace it. Merge the new rules with the existing ones. Keep all existing rules that the user did not mention. Only change or add what the user explicitly asked for."

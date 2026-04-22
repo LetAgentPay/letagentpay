@@ -46,27 +46,22 @@ describe("ConnectPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows agent token", async () => {
+  it("shows masked token", async () => {
     renderConnect();
     expect(
-      await screen.findByText("agt_test_token_abc123"),
+      await screen.findByText("agt_••••••••••••"),
     ).toBeInTheDocument();
   });
 
-  it("shows copy button for token", async () => {
+  it("shows regenerate button for token", async () => {
     renderConnect();
-    await screen.findByText("agt_test_token_abc123");
-    // The copy button is an icon button
-    const buttons = screen.getAllByRole("button");
-    const copyBtn = buttons.find(
-      (b) => b.querySelector("svg") !== null,
-    );
-    expect(copyBtn).toBeDefined();
+    await screen.findByText("agt_••••••••••••");
+    expect(screen.getByText("Regenerate Token")).toBeInTheDocument();
   });
 
   it("shows connection method tabs", async () => {
     renderConnect();
-    await screen.findByText("agt_test_token_abc123");
+    await screen.findByText("agt_••••••••••••");
     expect(screen.getByText("curl")).toBeInTheDocument();
     expect(screen.getByText("Python")).toBeInTheDocument();
     expect(screen.getByText("JavaScript")).toBeInTheDocument();

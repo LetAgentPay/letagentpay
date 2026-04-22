@@ -119,11 +119,13 @@ class TestApprovePurchaseRequest:
     ):
         await approve_purchase_request(db, mock_redis, pending_request, account.id)
 
-        # remove_held and remove_account_held each call decrby 3 times (daily, weekly, monthly)
-        decrby_calls = mock_redis.decrby.call_args_list
-        assert len(decrby_calls) >= 6
+        # remove_held and remove_account_held use _safe_decrby (Lua eval) 3+3 times
+        eval_calls = mock_redis.eval.call_args_list
+        # Filter decrby-floor calls: script contains DECRBY, key, amount
+        decrby_floor_calls = [c for c in eval_calls if "DECRBY" in str(c.args[0])]
+        assert len(decrby_floor_calls) >= 6
         expected_cents = 150000
-        held_amounts = [call.args[1] for call in decrby_calls]
+        held_amounts = [c.args[3] for c in decrby_floor_calls]
         assert held_amounts.count(expected_cents) >= 6
 
     @patch("app.services.request_actions.publish_event", new_callable=AsyncMock)
@@ -218,11 +220,12 @@ class TestRejectPurchaseRequest:
     ):
         await reject_purchase_request(db, mock_redis, pending_request, account.id)
 
-        # remove_held + remove_account_held = 6 decrby calls
-        decrby_calls = mock_redis.decrby.call_args_list
-        assert len(decrby_calls) >= 6
+        # remove_held + remove_account_held use _safe_decrby (Lua eval) 3+3 times
+        eval_calls = mock_redis.eval.call_args_list
+        decrby_floor_calls = [c for c in eval_calls if "DECRBY" in str(c.args[0])]
+        assert len(decrby_floor_calls) >= 6
         expected_cents = 150000
-        held_amounts = [call.args[1] for call in decrby_calls]
+        held_amounts = [c.args[3] for c in decrby_floor_calls]
         assert held_amounts.count(expected_cents) >= 6
 
     @patch("app.services.request_actions.publish_event", new_callable=AsyncMock)

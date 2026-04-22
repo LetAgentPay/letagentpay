@@ -67,9 +67,9 @@ Submit a purchase request for policy evaluation.
 }
 \`\`\`
 
-**Categories:** accommodation, clothing, education, electronics, entertainment, flights, food_delivery, gas, groceries, health, household, other, restaurants, subscriptions, taxi, transport
+**Categories:** Per-account custom categories. Use \`GET /categories\` to list valid categories for your agent. Default categories can be imported via the dashboard.
 
-> Unknown categories are automatically mapped to the closest match. The original category text is preserved in the \`original_category\` field of the response.
+> Unknown categories are automatically mapped to the closest match. If no match is found, the request is processed as "other" and the account owner is notified to review. The original category text is preserved in the \`original_category\` field of the response.
 
 ### GET /requests/{request_id} — Check Request Status
 

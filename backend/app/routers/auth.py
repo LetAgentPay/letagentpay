@@ -63,6 +63,10 @@ async def _authenticate_email(email: str, db: AsyncSession, response: Response) 
     logger.info("authenticated: account_id=%s email=%s", account.id, email)
 
     if is_new:
+        from app.models import Category
+
+        db.add(Category(account_id=account.id, name="other", display_name="Other"))
+        await db.commit()
         asyncio.create_task(send_admin_notification(f"🆕 New user registered: {email}"))
 
     response.set_cookie(
@@ -113,13 +117,22 @@ async def password_login(
     acc_result = await db.execute(select(Account).where(Account.email == email))
     account = acc_result.scalar_one_or_none()
 
+    is_new_admin = False
     if not account:
         account = Account(email=email)
         db.add(account)
+        is_new_admin = True
 
     account.is_admin = True
+
     await db.commit()
     await db.refresh(account)
+
+    if is_new_admin:
+        from app.models import Category
+
+        db.add(Category(account_id=account.id, name="other", display_name="Other"))
+        await db.commit()
 
     access_token = _create_access_token(account.id, account.email)
 
@@ -191,8 +204,13 @@ async def send_magic_link(
             }
         )
     else:
-        # Dev mode: log the link and OTP
-        logger.info("OTP for %s: %s | Magic link: %s", email, otp_code, magic_link)
+        # Dev mode: log code and link since Resend is not configured
+        logger.info(
+            "Magic link sent to %s (dev mode, email skipped)\n  OTP code: %s\n  Link: %s",
+            email,
+            otp_code,
+            magic_link,
+        )
 
     return TokenResponse(message="Magic link sent to your email")
 
@@ -251,6 +269,7 @@ async def verify_otp(
     await check_rate_limit(redis, f"rate_limit:auth:verify_otp:{ip}", 10, 900)
 
     email = body.email.lower().strip()
+    await check_rate_limit(redis, f"rate_limit:auth:verify_otp:{email}", 10, 900)
 
     result = await db.execute(
         select(VerificationToken).where(VerificationToken.email == email)

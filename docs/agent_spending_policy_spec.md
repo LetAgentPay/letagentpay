@@ -87,13 +87,15 @@ A Policy is a JSON object. All fields are optional. Omitted fields impose no res
 - If neither list is set, all categories are allowed
 - A category not present in either list is implicitly allowed (unless `allowed_categories` is set, which acts as a whitelist)
 
-**Example categories** (as used by LetAgentPay):
+**Default categories** (available for one-click import in LetAgentPay):
 
 ```
 accommodation, clothing, education, electronics, entertainment,
 flights, food_delivery, gas, groceries, health, household,
 other, restaurants, subscriptions, taxi, transport
 ```
+
+Categories are per-account. New accounts start with just `other`. Account owners can import the defaults above, create custom categories, and define aliases (synonyms) via the dashboard or API. If a purchase request uses an unknown category, it is resolved to `other` and flagged for review.
 
 ## 4. Schedule Object
 

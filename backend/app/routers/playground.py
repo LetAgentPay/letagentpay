@@ -21,10 +21,7 @@ def _require_playground():
 
 
 def _client_ip(request: Request) -> str:
-    """Extract client IP, respecting X-Forwarded-For behind a reverse proxy."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """Extract client IP for rate-limiting."""
     return request.client.host if request.client else "unknown"
 
 

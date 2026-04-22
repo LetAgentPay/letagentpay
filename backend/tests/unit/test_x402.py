@@ -323,7 +323,7 @@ class TestX402Report:
             "/api/v1/x402/report",
             json={
                 "authorization_id": auth_id,
-                "tx_hash": "0xabc123def456",
+                "tx_hash": "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1",
             },
             headers=_auth_header(x402_agent),
         )
@@ -337,7 +337,10 @@ class TestX402Report:
             select(PurchaseRequest).where(PurchaseRequest.id == auth_id)
         )
         pr = result.scalar_one()
-        assert pr.tx_hash == "0xabc123def456"
+        assert (
+            pr.tx_hash
+            == "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1"
+        )
         assert pr.status == "completed"
 
     @patch(
@@ -365,13 +368,19 @@ class TestX402Report:
         # First report
         await client.post(
             "/api/v1/x402/report",
-            json={"authorization_id": auth_id, "tx_hash": "0xabc123"},
+            json={
+                "authorization_id": auth_id,
+                "tx_hash": "0xabc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1",
+            },
             headers=_auth_header(x402_agent),
         )
         # Duplicate report
         resp = await client.post(
             "/api/v1/x402/report",
-            json={"authorization_id": auth_id, "tx_hash": "0xdef456"},
+            json={
+                "authorization_id": auth_id,
+                "tx_hash": "0xdef456def456def456def456def456def456def456def456def456def456def4",
+            },
             headers=_auth_header(x402_agent),
         )
         assert resp.status_code == 409
@@ -381,7 +390,7 @@ class TestX402Report:
             "/api/v1/x402/report",
             json={
                 "authorization_id": "nonexistent-id",
-                "tx_hash": "0xabc123",
+                "tx_hash": "0xabc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1",
             },
             headers=_auth_header(x402_agent),
         )
@@ -410,7 +419,7 @@ class TestX402Wallets:
         resp = await client.post(
             "/api/v1/x402/wallets",
             json={
-                "wallet_address": "0x1234567890abcdef",
+                "wallet_address": "0x1234567890abcdef1234567890abcdef12345678",
                 "chain": "base",
                 "wallet_provider": "coinbase",
             },
@@ -418,7 +427,7 @@ class TestX402Wallets:
         )
         assert resp.status_code == 201
         data = resp.json()
-        assert data["wallet_address"] == "0x1234567890abcdef"
+        assert data["wallet_address"] == "0x1234567890abcdef1234567890abcdef12345678"
         assert data["chain"] == "base"
         assert data["is_active"] is True
 
@@ -426,12 +435,18 @@ class TestX402Wallets:
         headers = _auth_header(x402_agent)
         await client.post(
             "/api/v1/x402/wallets",
-            json={"wallet_address": "0xaaa", "chain": "base"},
+            json={
+                "wallet_address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "chain": "base",
+            },
             headers=headers,
         )
         resp = await client.post(
             "/api/v1/x402/wallets",
-            json={"wallet_address": "0xbbb", "chain": "base"},
+            json={
+                "wallet_address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "chain": "base",
+            },
             headers=headers,
         )
         assert resp.status_code == 409
@@ -475,7 +490,7 @@ class TestX402EdgeCases:
     async def test_authorize_with_custom_category(
         self, mock_to_usd, client, db, x402_agent
     ):
-        """Category from request is stored on PurchaseRequest."""
+        """Known category from request is resolved and stored on PurchaseRequest."""
         resp = await client.post(
             "/api/v1/x402/authorize",
             json={
@@ -487,7 +502,7 @@ class TestX402EdgeCases:
                     "pay_to": "0xRecipient",
                 },
                 "max_amount_usd": 0.05,
-                "category": "compute",
+                "category": "electronics",
             },
             headers=_auth_header(x402_agent),
         )
@@ -495,7 +510,7 @@ class TestX402EdgeCases:
         result = await db.execute(
             select(PurchaseRequest).where(PurchaseRequest.id == pr_id)
         )
-        assert result.scalar_one().category == "compute"
+        assert result.scalar_one().category == "electronics"
 
     @patch(
         "app.services.exchange_rates.to_usd",
@@ -553,7 +568,7 @@ class TestX402EdgeCases:
             "/api/v1/x402/report",
             json={
                 "authorization_id": auth_id,
-                "tx_hash": "0xabc",
+                "tx_hash": "0xabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc1",
                 "actual_amount_usd": 0.04,
                 "resource_url": "https://api.example.com/result",
             },

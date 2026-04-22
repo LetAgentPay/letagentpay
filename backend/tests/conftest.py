@@ -16,6 +16,8 @@ from app.models import (
     Agent,
     Base,
     BudgetRule,
+    Category,
+    CategoryAlias,
     PurchaseRequest,
 )
 from app.utils import utcnow
@@ -139,11 +141,26 @@ def mock_redis():
         pass  # No-op for tests
 
     async def _eval(script, numkeys, *keys_and_args):
-        """Simulate Lua eval for action token and rate limit scripts."""
+        """Simulate Lua eval for action token, rate limit, and MGET scripts."""
         import json as _json
 
         if numkeys >= 1:
             key = keys_and_args[0]
+
+            # Multi-GET script: reads N keys atomically
+            if "for i = 1, #KEYS" in script and "GET" in script:
+                keys = keys_and_args[:numkeys]
+                return [store.get(k, "0") for k in keys]
+
+            # DECRBY-floor script: decrement clamped to 0
+            if "DECRBY" in script and "INCRBY" in script:
+                amount = int(keys_and_args[numkeys])  # ARGV[1]
+                current = int(store.get(key, "0"))
+                new_val = current - amount
+                if new_val < 0:
+                    new_val = 0
+                store[key] = str(new_val)
+                return new_val
 
             # Rate limit script: INCR + EXPIRE atomically
             if "INCR" in script and "EXPIRE" in script:
@@ -339,6 +356,59 @@ async def account(db: AsyncSession) -> Account:
     db.add(acc)
     await db.commit()
     await db.refresh(acc)
+
+    # Create default categories for the test account
+    default_cats = [
+        "accommodation",
+        "api",
+        "clothing",
+        "education",
+        "electronics",
+        "entertainment",
+        "flights",
+        "food_delivery",
+        "gas",
+        "groceries",
+        "health",
+        "household",
+        "other",
+        "restaurants",
+        "subscriptions",
+        "taxi",
+        "transport",
+    ]
+    cat_objects = {}
+    for name in default_cats:
+        cat = Category(
+            account_id=acc.id,
+            name=name,
+            display_name=name.replace("_", " ").title(),
+        )
+        db.add(cat)
+        cat_objects[name] = cat
+
+    await db.flush()
+
+    # Create default aliases
+    default_aliases = {
+        "food": "food_delivery",
+        "delivery": "food_delivery",
+        "uber_eats": "food_delivery",
+        "software": "subscriptions",
+        "hotel": "accommodation",
+        "uber": "taxi",
+        "grocery": "groceries",
+        "dining": "restaurants",
+    }
+    for alias_name, target in default_aliases.items():
+        alias = CategoryAlias(
+            account_id=acc.id,
+            category_id=cat_objects[target].id,
+            alias=alias_name,
+        )
+        db.add(alias)
+
+    await db.commit()
     return acc
 
 

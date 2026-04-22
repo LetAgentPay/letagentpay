@@ -157,7 +157,7 @@ coordinator = Agent(
 
 ## Categories
 
-Categories are user-defined per agent. Use the `list_categories` tool to get the valid list at runtime. Unknown categories are automatically mapped to the closest match by the server.
+Categories are per-account and fully customizable. New accounts start with just `"other"` — import the 16 default categories with one click from the dashboard, or create your own with optional aliases. Use the `list_categories` tool to get the valid list at runtime. Unknown categories are resolved to `"other"` and flagged for review in the dashboard.
 
 ## Full Example
 

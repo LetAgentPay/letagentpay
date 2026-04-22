@@ -5,6 +5,8 @@ import type {
   AutoReplenishResponse,
   BudgetResponse,
   BudgetRule,
+  CategoryAlias,
+  CategoryResponse,
   NotificationChannelResponse,
   PaginatedRequests,
   Policy,
@@ -136,6 +138,9 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+
+  regenerateToken: (agentId: string) =>
+    request<AgentResponse>(`/agents/${agentId}/regenerate-token`, { method: "POST" }),
 
   pauseAgent: (agentId: string) =>
     request<{ status: string }>(`/agents/${agentId}/pause`, { method: "POST" }),
@@ -274,6 +279,48 @@ export const api = {
 
   deleteBudgetRule: (ruleId: string) =>
     request<void>(`/me/budget/rules/${ruleId}`, { method: "DELETE" }),
+
+  // Categories
+  listCategories: () => request<CategoryResponse[]>("/me/categories"),
+
+  createCategory: (data: { name: string; display_name?: string }) =>
+    request<CategoryResponse>("/me/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateCategory: (
+    categoryId: string,
+    data: { display_name?: string; is_active?: boolean },
+  ) =>
+    request<CategoryResponse>(`/me/categories/${categoryId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteCategory: (categoryId: string) =>
+    request<void>(`/me/categories/${categoryId}`, { method: "DELETE" }),
+
+  addCategoryAlias: (categoryId: string, alias: string) =>
+    request<CategoryAlias>(`/me/categories/${categoryId}/aliases`, {
+      method: "POST",
+      body: JSON.stringify({ alias }),
+    }),
+
+  removeCategoryAlias: (categoryId: string, aliasId: string) =>
+    request<void>(`/me/categories/${categoryId}/aliases/${aliasId}`, {
+      method: "DELETE",
+    }),
+
+  importDefaultCategories: () =>
+    request<CategoryResponse[]>("/me/categories/import-defaults", {
+      method: "POST",
+    }),
+
+  generateAliases: (categoryId: string) =>
+    request<CategoryAlias[]>(`/me/categories/${categoryId}/generate-aliases`, {
+      method: "POST",
+    }),
 
   // Push notifications
   getVapidKey: () => request<{ vapid_public_key: string }>("/push/vapid-key"),

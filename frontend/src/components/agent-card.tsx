@@ -9,7 +9,7 @@ import { BudgetBar } from "@/components/budget-bar";
 import type { AgentResponse } from "@/lib/types";
 import { api } from "@/lib/api";
 import { formatMoney, currencySymbol } from "@/lib/format";
-import { Eye, EyeOff, Pause, Play, Pencil, Copy, Plus, Minus, RefreshCw, ChevronDown, ChevronUp, Archive } from "lucide-react";
+import { Pause, Play, Pencil, Copy, Plus, Minus, RefreshCw, ChevronDown, ChevronUp, Archive } from "lucide-react";
 import { toast } from "sonner";
 
 interface AgentCardProps {
@@ -21,7 +21,7 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, currency, onUpdate, editBudget, onEditBudgetHandled }: AgentCardProps) {
-  const [showToken, setShowToken] = useState(false);
+  const [newToken, setNewToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState("");
@@ -340,24 +340,24 @@ export function AgentCard({ agent, currency, onUpdate, editBudget, onEditBudgetH
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Token:</span>
             <code
-              className={`flex-1 truncate rounded bg-muted px-2 py-1 text-xs ${showToken ? "cursor-pointer hover:bg-muted/70 transition-colors" : ""}`}
+              className={`flex-1 truncate rounded bg-muted px-2 py-1 text-xs ${newToken ? "cursor-pointer hover:bg-muted/70 transition-colors" : ""}`}
               onClick={() => {
-                if (showToken) {
-                  navigator.clipboard.writeText(agent.token);
+                if (newToken) {
+                  navigator.clipboard.writeText(newToken);
                   toast.success("Token copied to clipboard");
                 }
               }}
-              title={showToken ? "Click to copy" : undefined}
+              title={newToken ? "Click to copy" : undefined}
             >
-              {showToken ? agent.token : "agt_••••••••••••"}
+              {newToken || agent.token}
             </code>
-            {showToken && (
+            {newToken && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
                 onClick={() => {
-                  navigator.clipboard.writeText(agent.token);
+                  navigator.clipboard.writeText(newToken);
                   toast.success("Token copied to clipboard");
                 }}
               >
@@ -368,15 +368,31 @@ export function AgentCard({ agent, currency, onUpdate, editBudget, onEditBudgetH
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={() => setShowToken(!showToken)}
+              title="Regenerate token"
+              disabled={loading}
+              onClick={async () => {
+                if (!confirm("Regenerate token? The current token will stop working immediately.")) return;
+                setLoading(true);
+                try {
+                  const updated = await api.regenerateToken(agent.id);
+                  setNewToken(updated.token);
+                  toast.success("Token regenerated — copy it now, it won't be shown again");
+                  onUpdate();
+                } catch {
+                  toast.error("Failed to regenerate token");
+                } finally {
+                  setLoading(false);
+                }
+              }}
             >
-              {showToken ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
+          {newToken && (
+            <p className="text-xs text-amber-600">
+              Copy this token now — it won&apos;t be shown again.
+            </p>
+          )}
         </div>
 
         <div className="flex gap-2">
