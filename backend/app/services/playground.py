@@ -4,6 +4,7 @@ Creates temporary accounts + agents for the public no-auth playground demo.
 Sessions are tracked in Redis with a TTL; DB records are cleaned up periodically.
 """
 
+import asyncio
 import logging
 import random
 import uuid
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models import Account, Agent, PurchaseRequest
 from app.redis import get_redis
+from app.services.telegram import send_admin_notification
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +200,12 @@ async def create_session(client_ip: str, db: AsyncSession) -> dict:
     # Init request counter
     req_key = f"{_REQ_COUNT_KEY}{session_id}"
     await redis.set(req_key, "0", ex=ttl)
+
+    asyncio.create_task(
+        send_admin_notification(
+            f"🎮 Playground session started: {preset['name']} (IP: {client_ip})"
+        )
+    )
 
     return {
         "session_id": session_id,

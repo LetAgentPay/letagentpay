@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-04-23
+
 ## [1.5.0] - 2026-04-22
 
 ### Added
@@ -58,7 +60,6 @@
 ### Fixed
 - npm audit: protobufjs (critical), dompurify, hono (frontend + mcp-server)
 - sdk-vercel-ai: migrated ai@4→ai@6, `parameters`→`inputSchema`
-- Enterprise version improvements
 
 ## [1.3.0] - 2026-04-15
 
@@ -79,7 +80,6 @@
 
 ### Fixed
 - Footer now shows the same links as the navigation bar (added Playground)
-- Enterprise version improvements
 
 ## [1.2.3] - 2026-04-10
 
@@ -120,9 +120,6 @@
 
 ## [1.1.1] - 2026-04-08
 
-### Fixed
-- Enterprise version improvements
-
 ## [1.1.0] - 2026-04-07
 
 ### Added
@@ -133,27 +130,16 @@
 ### Fixed
 - Security: upgraded anthropic 0.86.0 → 0.91.0 (CVE-2026-34450, CVE-2026-34452)
 - Security: fixed vite vulnerabilities (path traversal, fs.deny bypass, WebSocket file read)
-- Enterprise version improvements
 
 ## [1.0.35] - 2026-04-06
 
-- Enterprise version improvements
-
 ## [1.0.33] - 2026-04-06
-
-- Enterprise version improvements
 
 ## [1.0.32] - 2026-04-06
 
-- Enterprise version improvements
-
 ## [1.0.31] - 2026-04-06
 
-- Enterprise version improvements
-
 ## [1.0.26] - 2026-04-04
-
-- Enterprise version improvements
 
 ## [1.0.25] - 2026-04-04
 
@@ -189,15 +175,9 @@
 
 ## [1.0.12] - 2026-04-02
 
-- Enterprise version improvements
-
 ## [1.0.11] - 2026-04-02
 
-- Enterprise version improvements
-
 ## [1.0.10] - 2026-04-02
-
-- Enterprise version improvements
 
 ## [1.0.9] - 2026-04-02
 
@@ -213,8 +193,6 @@
 - GitHub Releases with changelog notes created automatically on each release
 
 ## [1.0.1] - 2026-04-02
-
-- Enterprise version improvements
 
 ## [1.0.0] - 2026-04-02
 
