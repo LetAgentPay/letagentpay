@@ -38,14 +38,29 @@ def _create_access_token(account_id: str, email: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-async def _authenticate_email(email: str, db: AsyncSession, response: Response) -> dict:
-    """Find or create account by email, set JWT cookie, return response dict."""
+async def _authenticate_email(
+    email: str,
+    db: AsyncSession,
+    response: Response,
+    attribution: VerificationToken | None = None,
+) -> dict:
+    """Find or create account by email, set JWT cookie, return response dict.
+
+    `attribution` (a VerificationToken) carries optional signup_* fields used
+    only when creating a new Account.
+    """
     acc_result = await db.execute(select(Account).where(Account.email == email))
     account = acc_result.scalar_one_or_none()
 
     is_new = False
     if not account:
         account = Account(email=email)
+        if attribution is not None:
+            account.signup_landing = attribution.signup_landing
+            account.signup_source = attribution.signup_source
+            account.signup_medium = attribution.signup_medium
+            account.signup_campaign = attribution.signup_campaign
+            account.signup_content = attribution.signup_content
         db.add(account)
         is_new = True
 
@@ -174,10 +189,16 @@ async def send_magic_link(
     # Remove old tokens for this email
     await db.execute(delete(VerificationToken).where(VerificationToken.email == email))
 
-    # Save new token with OTP
+    # Save new token with OTP and (optional) signup attribution
     vt = VerificationToken(
         email=email, token=token, otp_code=otp_code, expires_at=expires_at
     )
+    if body.attribution is not None:
+        vt.signup_landing = body.attribution.landing
+        vt.signup_source = body.attribution.source
+        vt.signup_medium = body.attribution.medium
+        vt.signup_campaign = body.attribution.campaign
+        vt.signup_content = body.attribution.content
     db.add(vt)
     await db.commit()
 
@@ -244,6 +265,7 @@ async def verify_magic_link(
         raise HTTPException(status_code=400, detail="Token expired")
 
     email = vt.email
+    attribution = vt
 
     # Delete used token
     await db.delete(vt)
@@ -251,7 +273,7 @@ async def verify_magic_link(
     # Redirect to dashboard — called by Next.js Route Handler server-side,
     # which forwards the Set-Cookie to the browser.
     resp = RedirectResponse(url=f"{settings.frontend_url}/dashboard", status_code=302)
-    await _authenticate_email(email, db, resp)
+    await _authenticate_email(email, db, resp, attribution=attribution)
     return resp
 
 
@@ -296,9 +318,10 @@ async def verify_otp(
         await db.commit()
         raise HTTPException(status_code=400, detail="Invalid code")
 
-    # OTP valid — delete token and authenticate
+    # OTP valid — capture attribution, delete token, authenticate
+    attribution = vt
     await db.delete(vt)
-    return await _authenticate_email(email, db, response)
+    return await _authenticate_email(email, db, response, attribution=attribution)
 
 
 @router.post("/logout")

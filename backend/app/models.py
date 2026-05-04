@@ -55,6 +55,12 @@ class Account(Base):
     )
     request_expiry_minutes: Mapped[int] = mapped_column(Integer, default=30)
 
+    signup_landing: Mapped[str | None] = mapped_column(String(64))
+    signup_source: Mapped[str | None] = mapped_column(String(64))
+    signup_medium: Mapped[str | None] = mapped_column(String(64))
+    signup_campaign: Mapped[str | None] = mapped_column(String(128))
+    signup_content: Mapped[str | None] = mapped_column(String(128))
+
     agents: Mapped[list["Agent"]] = relationship(back_populates="account")
     push_subscriptions: Mapped[list["PushSubscription"]] = relationship(
         back_populates="account"
@@ -373,3 +379,9 @@ class VerificationToken(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+
+    signup_landing: Mapped[str | None] = mapped_column(String(64))
+    signup_source: Mapped[str | None] = mapped_column(String(64))
+    signup_medium: Mapped[str | None] = mapped_column(String(64))
+    signup_campaign: Mapped[str | None] = mapped_column(String(128))
+    signup_content: Mapped[str | None] = mapped_column(String(128))

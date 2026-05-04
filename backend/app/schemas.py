@@ -97,8 +97,20 @@ class PasswordLoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=255)
 
 
+class SignupAttribution(BaseModel):
+    """Optional signup attribution captured client-side from UTM params or
+    landing page. All fields nullable; ignored on existing accounts."""
+
+    landing: str | None = Field(default=None, max_length=64)
+    source: str | None = Field(default=None, max_length=64)
+    medium: str | None = Field(default=None, max_length=64)
+    campaign: str | None = Field(default=None, max_length=128)
+    content: str | None = Field(default=None, max_length=128)
+
+
 class SendLinkRequest(BaseModel):
     email: str = Field(max_length=255)
+    attribution: SignupAttribution | None = None
 
 
 class VerifyOtpRequest(BaseModel):

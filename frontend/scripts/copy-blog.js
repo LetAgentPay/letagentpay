@@ -34,19 +34,49 @@ if (!srcDir) {
   process.exit(0);
 }
 
-// Copy markdown files (excluding -external versions)
-const files = fs.readdirSync(srcDir).filter((f) => f.endsWith(".md") && !f.includes("-external"));
+// Copy markdown files.
+//
+// Convention: each post has two files in the source directory:
+//   <slug>.md           — internal draft (planning notes, tone decisions, etc.)
+//   <slug>-external.md  — public-facing version (the one we ship to readers)
+//
+// Rules:
+//   - If <slug>-external.md exists → copy it to public/blog/<slug>.md (without
+//     the suffix) and IGNORE the internal <slug>.md, even if present.
+//   - If only <slug>.md exists (no external twin) → copy it as-is. Covers older
+//     posts where the external content was merged back into the canonical file.
+//
+// This prevents leaks of internal drafts when both files are present.
+const allMd = fs.readdirSync(srcDir).filter((f) => f.endsWith(".md"));
+const externalSlugs = new Set(
+  allMd
+    .filter((f) => f.endsWith("-external.md"))
+    .map((f) => f.replace(/-external\.md$/, ""))
+);
 
-for (const file of files) {
-  const destPath = path.join(outDir, file);
+const toCopy = [];
+for (const file of allMd) {
+  if (file.endsWith("-external.md")) {
+    const slug = file.replace(/-external\.md$/, "");
+    toCopy.push({ src: file, dest: `${slug}.md` });
+  } else {
+    const slug = file.replace(/\.md$/, "");
+    if (!externalSlugs.has(slug)) {
+      toCopy.push({ src: file, dest: file });
+    }
+  }
+}
+
+for (const { src, dest } of toCopy) {
+  const destPath = path.join(outDir, dest);
 
   if (fs.existsSync(destPath) && fs.statSync(destPath).size > 200) {
-    console.log(`Skipping blog/${file} — already exists (${fs.statSync(destPath).size} bytes)`);
+    console.log(`Skipping blog/${dest} — already exists (${fs.statSync(destPath).size} bytes)`);
     continue;
   }
 
-  fs.copyFileSync(path.join(srcDir, file), destPath);
-  console.log(`Copied blog/${file} → public/blog/${file}`);
+  fs.copyFileSync(path.join(srcDir, src), destPath);
+  console.log(`Copied blog/${src} → public/blog/${dest}`);
 }
 
 // Copy cover images

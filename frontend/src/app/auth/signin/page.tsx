@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, ApiError } from "@/lib/api";
+import { readAttribution } from "@/lib/attribution";
 import { useAuth } from "@/lib/auth-context";
 import { VersionLink } from "@/components/version-link";
 
@@ -42,7 +43,7 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      await api.sendLink(email);
+      await api.sendLink(email, readAttribution());
       setSent(true);
     } catch (err) {
       setError(authError(err));
@@ -76,7 +77,7 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      await api.sendLink(email);
+      await api.sendLink(email, readAttribution());
     } catch (err) {
       setError(authError(err));
     } finally {

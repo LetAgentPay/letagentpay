@@ -78,10 +78,98 @@ jobs:
         working-directory: frontend
         run: npm run test
 
+  sdk-python:
+    name: Python SDK (test)
+    runs-on: ubuntu-latest
+    if: hashFiles('sdk/pyproject.toml') != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package + test deps
+        working-directory: sdk
+        run: |
+          pip install -e .
+          pip install pytest pytest-asyncio respx httpx
+
+      - name: Unit tests
+        working-directory: sdk
+        run: pytest tests/ -v --tb=short
+
+  sdk-js:
+    name: TypeScript SDK (test)
+    runs-on: ubuntu-latest
+    if: hashFiles('sdk-js/package.json') != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk-js/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdk-js
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: sdk-js
+        run: npm test
+
+  sdk-vercel-ai:
+    name: Vercel AI SDK tools (test)
+    runs-on: ubuntu-latest
+    if: hashFiles('sdk-vercel-ai/package.json') != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk-vercel-ai/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdk-vercel-ai
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: sdk-vercel-ai
+        run: npm test
+
+  mcp-server:
+    name: MCP server (test)
+    runs-on: ubuntu-latest
+    if: hashFiles('mcp-server/package.json') != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mcp-server
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: mcp-server
+        run: npm test
+
   docker:
     name: Docker build
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [backend, frontend, sdk-python, sdk-js, sdk-vercel-ai, mcp-server]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -102,7 +190,7 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [backend, frontend, sdk-python, sdk-js, sdk-vercel-ai, mcp-server]
     if: "github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release: v')"
     permissions:
       contents: write

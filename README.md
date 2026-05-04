@@ -1,24 +1,39 @@
 # LetAgentPay
 
-**Policy middleware between AI agents and payments.** Set budgets, define spending policies in plain English, and approve or reject AI agent purchases in real time.
+> **Stop your AI agent from spending $1,000 in 30 seconds.**
+
+AI agents can already buy things — call paid APIs, pay for subscriptions, settle x402 requests, run shopping flows. Giving them your card is a risk: no daily limits, no category rules, no audit trail, no kill switch when an agent loops.
+
+LetAgentPay sits between your agent and any payment, with three guarantees:
+
+- **Hard ceiling.** The agent cannot exceed the daily / weekly / monthly budget you set. Period.
+- **Plain-English policies.** Write rules like *"no purchases after midnight"* or *"auto-approve groceries under $50"* — AI converts them to enforced config.
+- **Real-time human override.** Pending requests appear on a live dashboard with one-click approve / reject (SSE updates, mobile push).
 
 <p align="center">
   <img src="docs/assets/demo.gif" alt="LetAgentPay demo — agent sends purchase requests, policy engine approves/rejects in real time" width="720">
 </p>
 
-## The Problem
+## How It Differs
 
-AI agents can spend money — calling APIs, buying services, paying for subscriptions. But there's no standard way to control *how much* they spend, *on what*, or *when*.
+| | Card given to agent | Stripe / x402 raw | **LetAgentPay** |
+|---|---|---|---|
+| Daily / weekly / monthly cap | ❌ | ❌ | ✅ |
+| Category rules | ❌ | ❌ | ✅ |
+| Schedule (e.g. business hours only) | ❌ | ❌ | ✅ |
+| Audit trail of every attempt | partial | partial | ✅ |
+| Human-in-the-loop approval | ❌ | ❌ | ✅ |
+| Plain-English policy → config | ❌ | ❌ | ✅ |
+| Works on top of any rail (Stripe, x402, gift cards) | n/a | n/a | ✅ |
 
-## The Solution
+LetAgentPay is the **control plane**. Use it on top of whatever rail you already have.
 
-LetAgentPay sits between your AI agent and any payment action. You define the rules, the agent requests permission, and LetAgentPay enforces the policy:
+## What's Inside
 
-- **Natural language policies** — write rules like "no purchases after midnight" or "auto-approve groceries under $50", and AI converts them to structured config
 - **8-check policy engine** — status, category, per-request limit, schedule, daily/weekly/monthly limits, budget
-- **Real-time dashboard** — approve or reject pending requests, see spending stats, SSE live updates
 - **Auto-approve** — trusted categories and small amounts go through automatically
 - **Fund holding** — pending requests reserve budget, preventing overspend
+- **x402 support** — sign and authorize HTTP 402 micropayments inside the same policy
 
 ## Quick Start (Self-Hosted)
 

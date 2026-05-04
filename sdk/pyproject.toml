@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "letagentpay"
+version = "0.2.5"
+description = "Python SDK for LetAgentPay — AI agent spending policy middleware for fiat and x402 crypto-micropayments"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "LetAgentPay", email = "hello@letagentpay.com" }]
+keywords = ["ai", "agent", "spending", "policy", "budget", "llm"]
+dependencies = ["httpx>=0.25"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "respx>=0.22", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://letagentpay.com"
+Documentation = "https://letagentpay.com/developers"
+Repository = "https://github.com/letagentpay/letagentpay-python"
+Issues = "https://github.com/letagentpay/letagentpay-python/issues"

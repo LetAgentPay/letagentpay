@@ -11,19 +11,19 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="mx-auto max-w-4xl px-4 py-20 text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          Control every dollar your AI agent spends
+          Give your AI agent a wallet — with rules
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-          Set budgets, define spending policies in plain English, and approve or
-          reject AI agent purchases in real time — before the money leaves your
-          account.
+          Let your agent pay for APIs, services, and tasks autonomously —
+          within budgets and policies you define. Open-source, works with
+          fiat and crypto rails.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             href="/auth/signin"
             className="rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Get Started — Free
+            Create Free Account
           </Link>
           <PlaygroundLink
             className="rounded-md border px-6 py-3 text-sm font-medium hover:bg-muted"
@@ -37,39 +37,37 @@ export default function LandingPage() {
             View Docs
           </Link>
         </div>
+        <p className="mt-6 text-xs text-muted-foreground">
+          9 framework integrations · Python &amp; TypeScript SDKs · MCP server · x402 live on Base
+        </p>
       </section>
 
-      {/* Problem */}
+      {/* What it enables */}
       <section className="border-t bg-muted/50">
         <div className="mx-auto max-w-4xl px-4 py-20">
           <h2 className="text-center text-2xl font-bold sm:text-3xl">
-            AI agents are spending money on your behalf.
-            <br />
-            <span className="text-muted-foreground">Do you know where it goes?</span>
+            What your agent can do once it has a wallet
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             <div className="space-y-2">
-              <div className="text-3xl">$</div>
-              <h3 className="font-semibold">Uncontrolled spending</h3>
+              <h3 className="font-semibold">Pay for APIs autonomously</h3>
               <p className="text-base text-muted-foreground">
-                Agents call APIs, provision cloud resources, and subscribe to
-                SaaS tools — often without explicit limits.
+                Your agent buys API credits, premium model access, or per-call
+                services without you in the loop — but only within rules you set.
               </p>
             </div>
             <div className="space-y-2">
-              <div className="text-3xl">?</div>
-              <h3 className="font-semibold">No visibility</h3>
+              <h3 className="font-semibold">Provision cloud &amp; SaaS</h3>
               <p className="text-base text-muted-foreground">
-                You find out about costs after the fact — when the invoice
-                arrives. By then it&apos;s too late.
+                Spin up resources, subscribe to tools, top up data plans —
+                each purchase checked against budget and category limits in real time.
               </p>
             </div>
             <div className="space-y-2">
-              <div className="text-3xl">!</div>
-              <h3 className="font-semibold">No policy enforcement</h3>
+              <h3 className="font-semibold">Settle on-chain micropayments</h3>
               <p className="text-base text-muted-foreground">
-                Prompt instructions like &quot;don&apos;t spend more than $50&quot; are
-                suggestions, not guarantees. Agents can ignore them.
+                Same policy engine for fiat and crypto. USDC on Base via x402
+                works today, with one unified budget across rails.
               </p>
             </div>
           </div>
@@ -83,30 +81,30 @@ export default function LandingPage() {
             How it works
           </h2>
           <p className="mt-3 text-center text-muted-foreground">
-            LetAgentPay sits between your AI agent and the payment — a policy
-            checkpoint that enforces your rules.
+            One policy engine sits between your agent and any payment rail —
+            checks rules, decides, logs.
           </p>
           <div className="mt-12 grid gap-6 sm:grid-cols-4">
             {[
               {
                 step: "1",
-                title: "Define policies",
-                desc: "Set budgets, category limits, schedules, and per-request caps — in plain English or JSON.",
+                title: "Set rules",
+                desc: "Budgets, category limits, schedules, per-request caps. Plain English or JSON — both work.",
               },
               {
                 step: "2",
                 title: "Agent requests",
-                desc: "Before spending, your agent calls LetAgentPay with the amount, category, and description.",
+                desc: "Before spending, the agent asks for approval with the amount, category, and description.",
               },
               {
                 step: "3",
-                title: "Policy check",
-                desc: "8 checks run instantly: budget, category, limits, schedule, spending history. Auto-approve or escalate.",
+                title: "Engine decides",
+                desc: "8 instant checks: budget, category, schedule, history. Auto-approve routine, escalate unusual.",
               },
               {
                 step: "4",
-                title: "You decide",
-                desc: "Approved requests proceed. Flagged ones wait for your review. Rejected ones stop the agent.",
+                title: "Agent pays",
+                desc: "Approved purchases proceed on the chosen rail. Every action logged with full audit trail.",
               },
             ].map((item) => (
               <div key={item.step} className="space-y-2">
@@ -121,74 +119,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Where It Fits */}
-      <section className="border-t bg-muted/50">
-        <div className="mx-auto max-w-4xl px-4 py-20">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl">
-            Where LetAgentPay fits in the payment lifecycle
-          </h2>
-          <p className="mt-3 text-center text-muted-foreground">
-            We&apos;re not a payment processor. We&apos;re the policy layer that
-            decides whether a payment should happen.
-          </p>
-          <div className="mt-12 flex flex-col items-center gap-0">
-            {/* Pipeline diagram */}
-            <div className="flex w-full max-w-2xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-0">
-              {[
-                { label: "AI Agent", sub: "wants to spend", active: false },
-                { label: "LetAgentPay", sub: "policy check", active: true },
-                { label: "Payment", sub: "approved spend", active: false },
-              ].map((node, i) => (
-                <div key={node.label} className="flex flex-1 items-center">
-                  <div
-                    className={`flex-1 rounded-lg border-2 p-4 text-center ${
-                      node.active
-                        ? "border-primary bg-primary/5"
-                        : "border-border"
-                    }`}
-                  >
-                    <div className="font-semibold">{node.label}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {node.sub}
-                    </div>
-                  </div>
-                  {i < 2 && (
-                    <div className="hidden px-2 text-muted-foreground sm:block">
-                      &rarr;
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 grid gap-6 text-base sm:grid-cols-3">
-              <div>
-                <h4 className="font-semibold">Before payment</h4>
-                <p className="mt-1 text-muted-foreground">
-                  The agent asks LetAgentPay for approval before initiating any
-                  transaction. No approval — no payment.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold">Real-time decisions</h4>
-                <p className="mt-1 text-muted-foreground">
-                  Policies are checked instantly. Auto-approve for routine
-                  purchases, escalate unusual ones to you.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold">After payment</h4>
-                <p className="mt-1 text-muted-foreground">
-                  The agent confirms the result. Spending counters update. Full
-                  audit trail preserved.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Features */}
-      <section className="border-t">
+      <section className="border-t bg-muted/50">
         <div className="mx-auto max-w-4xl px-4 py-20">
           <h2 className="text-center text-2xl font-bold sm:text-3xl">
             Capabilities
@@ -197,39 +129,35 @@ export default function LandingPage() {
             {[
               {
                 title: "Natural language policies",
-                desc: "Write rules like \"max $100/day on cloud services, no weekend spending\". AI converts them to enforceable JSON policies.",
+                desc: 'Write rules like "max $100/day on cloud APIs, no weekend spending". Claude converts them to enforceable JSON.',
               },
               {
                 title: "Multi-level budgets",
-                desc: "Set per-request, daily, weekly, monthly limits and an overall budget. All checked in real time against actual spending.",
+                desc: "Per-request, daily, weekly, monthly limits and overall budget — all checked in real time against actual spend.",
               },
               {
                 title: "Category controls",
-                desc: "Restrict agents to specific spending categories — groceries, cloud, SaaS, travel — and set different limits per category.",
+                desc: "Custom per-account categories. Different limits per category, with AI alias matching for free-form descriptions.",
               },
               {
                 title: "Schedule-based rules",
-                desc: "Allow spending only during business hours, block weekends, or define custom time windows.",
+                desc: "Allow spending only during business hours, block weekends, or define custom time windows per category.",
               },
               {
-                title: "Auto-approve & escalation",
-                desc: "Routine purchases within policy get approved instantly. Unusual or high-value requests require your manual review.",
+                title: "Auto-approve and escalation",
+                desc: "Routine purchases within policy auto-approve. High-value or unusual ones wait for manual review.",
               },
               {
                 title: "Real-time dashboard",
-                desc: "See every request as it happens. Approve, reject, or review with full context — amount, category, merchant, policy check results.",
+                desc: "See every request as it happens. Approve, reject, or review with full context and policy results.",
               },
               {
-                title: "Spending analytics",
-                desc: "Track daily, weekly, and monthly spending by agent. See budget utilization and remaining balances at a glance.",
+                title: "Multi-rail under one engine",
+                desc: "Fiat (Stripe-style integrations) and x402 USDC settlements share the same policy and unified budget.",
               },
               {
-                title: "Full audit trail",
-                desc: "Every request, every policy check, every decision — logged and searchable. Know exactly what was spent, when, and why.",
-              },
-              {
-                title: "x402 crypto-micropayments",
-                desc: "Authorize on-chain USDC payments on Base. Same policy engine for fiat and crypto — unified budget, one dashboard.",
+                title: "Self-hosted and open-source",
+                desc: "Run on your own infra, full source access. Or use the hosted SaaS — same engine, same APIs.",
               },
             ].map((feature) => (
               <div key={feature.title} className="space-y-2">
@@ -242,13 +170,13 @@ export default function LandingPage() {
       </section>
 
       {/* Integration */}
-      <section className="border-t bg-muted/50">
+      <section className="border-t">
         <div className="mx-auto max-w-4xl px-4 py-20">
           <h2 className="text-center text-2xl font-bold sm:text-3xl">
             Integrate in minutes
           </h2>
           <p className="mt-3 text-center text-muted-foreground">
-            Three ways to connect your agent — pick what fits your stack.
+            Pick what fits your stack — SDKs, MCP, REST, or any of 9 framework guides.
           </p>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             <div className="rounded-lg border bg-background p-6">
@@ -256,13 +184,14 @@ export default function LandingPage() {
               <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
                 <code>{`pip install letagentpay
 
-client = LetAgentPay(
-    token="agt_..."
-)
-client.purchase(
+client = LetAgentPay(token="agt_...")
+
+result = client.request_purchase(
     amount=49.99,
-    category="cloud"
-)`}</code>
+    category="cloud",
+)
+# result.status: "auto_approved",
+# "pending", or "rejected"`}</code>
               </pre>
             </div>
             <div className="rounded-lg border bg-background p-6">
@@ -276,8 +205,8 @@ client.purchase(
             <div className="rounded-lg border bg-background p-6">
               <h3 className="font-semibold">REST API</h3>
               <p className="mt-3 text-base text-muted-foreground">
-                Simple HTTP endpoints with Bearer token auth. Works with any
-                language or framework. Full OpenAPI spec available.
+                Bearer token auth, simple HTTP endpoints. Works with any
+                language. Full OpenAPI spec available.
               </p>
             </div>
           </div>
@@ -293,31 +222,31 @@ client.purchase(
       </section>
 
       {/* Use Cases */}
-      <section className="border-t">
+      <section className="border-t bg-muted/50">
         <div className="mx-auto max-w-4xl px-4 py-20">
           <h2 className="text-center text-2xl font-bold sm:text-3xl">
             Built for
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             <div className="space-y-2">
-              <h3 className="font-semibold">AI agent developers</h3>
+              <h3 className="font-semibold">Agent developers</h3>
               <p className="text-base text-muted-foreground">
-                Give your users confidence that their agent won&apos;t overspend.
-                Add spending controls as a feature, not a liability.
+                Ship agents that pay for things — and ship them with
+                guardrails users actually trust.
               </p>
             </div>
             <div className="space-y-2">
-              <h3 className="font-semibold">Teams using AI tools</h3>
+              <h3 className="font-semibold">Teams running AI in production</h3>
               <p className="text-base text-muted-foreground">
-                Let agents handle procurement, cloud provisioning, and SaaS
-                subscriptions — with guardrails you define.
+                Let agents handle procurement, cloud, and SaaS with budgets
+                and category limits per agent.
               </p>
             </div>
             <div className="space-y-2">
-              <h3 className="font-semibold">Individuals with AI assistants</h3>
+              <h3 className="font-semibold">Builders on x402 / AP2</h3>
               <p className="text-base text-muted-foreground">
-                Trust your personal AI to book, shop, and subscribe — knowing
-                every purchase gets checked against your rules first.
+                Already gave your agent a wallet? Add the policy layer that
+                decides when it opens.
               </p>
             </div>
           </div>
@@ -325,13 +254,13 @@ client.purchase(
       </section>
 
       {/* CTA */}
-      <section className="border-t bg-muted/50">
+      <section className="border-t">
         <div className="mx-auto max-w-4xl px-4 py-20 text-center">
           <h2 className="text-2xl font-bold sm:text-3xl">
-            Start controlling AI spending today
+            Give your agent a wallet today
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Free while in early access. Set up in under 5 minutes.
+            Free during early access. Setup takes under 5 minutes.
           </p>
           <div className="mt-8">
             <Link

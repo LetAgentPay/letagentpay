@@ -13,6 +13,7 @@ import type {
   PolicyAIResponse,
   TelegramLinkResponse,
 } from "./types";
+import type { Attribution } from "./attribution";
 import { eeApi } from "./api-ee";
 
 // In dev, requests are proxied via Next.js rewrites (next.config.ts) to avoid
@@ -56,10 +57,12 @@ export const api = {
   // Auth
   authMode: () => request<{ mode: "magic_link" | "password" }>("/auth/mode"),
 
-  sendLink: (email: string) =>
+  sendLink: (email: string, attribution?: Attribution | null) =>
     request<{ message: string }>("/auth/send-link", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(
+        attribution ? { email, attribution } : { email },
+      ),
     }),
 
   passwordLogin: async (password: string) => {
