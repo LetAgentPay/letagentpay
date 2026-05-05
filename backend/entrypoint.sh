@@ -14,4 +14,4 @@ if [ "$1" = "--migrate" ]; then
 fi
 
 echo "Starting server..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 30
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 30 --proxy-headers --forwarded-allow-ips='*'
