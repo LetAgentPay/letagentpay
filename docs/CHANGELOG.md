@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.5.5] - 2026-05-12
+
+### Fixed
+- **Magic link verification race condition** — replaced `select + delete` with an atomic `DELETE ... RETURNING` so only one concurrent verify request with the same token can authenticate
+
+### Improved
+- **Security: bumped dependencies with known CVEs**
+  - backend: `mako` 1.3.10 → 1.3.12 (CVE-2026-44307), `python-multipart` 0.0.26 → 0.0.28 (CVE-2026-42561), `urllib3` 2.6.3 → 2.7.0 (CVE-2026-44431, CVE-2026-44432)
+  - frontend: `next` 16.2.3 → 16.2.6 (cache poisoning + middleware bypass advisories), plus `fast-uri`, `hono`, and `ip-address` via `shadcn` CLI update
+
 ## [1.5.4] - 2026-05-05
 
 ## [1.5.3] - 2026-05-04

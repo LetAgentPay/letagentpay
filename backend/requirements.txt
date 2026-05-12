@@ -142,7 +142,7 @@ jiter==0.14.0
     # via anthropic
 jsonalias==0.1.1
     # via solders
-mako==1.3.10
+mako==1.3.12
     # via alembic
 markupsafe==3.0.3
     # via mako
@@ -190,7 +190,7 @@ python-dotenv==1.2.2
     # via
     #   pydantic-settings
     #   uvicorn
-python-multipart==0.0.26
+python-multipart==0.0.28
     # via -r requirements.in
 pyunormalize==17.0.0
     # via web3
@@ -260,7 +260,7 @@ typing-inspection==0.4.2
     #   fastapi
     #   pydantic
     #   pydantic-settings
-urllib3==2.6.3
+urllib3==2.7.0
     # via
     #   cdp-sdk
     #   requests

@@ -248,8 +248,11 @@ async def verify_magic_link(
     ip = request.client.host if request.client else "unknown"
     await check_rate_limit(redis, f"rate_limit:auth:verify:{ip}", 10, 900)
 
+    # Atomic claim: DELETE...RETURNING ensures only one concurrent verify wins.
     result = await db.execute(
-        select(VerificationToken).where(VerificationToken.token == token)
+        delete(VerificationToken)
+        .where(VerificationToken.token == token)
+        .returning(VerificationToken)
     )
     vt = result.scalar_one_or_none()
 
@@ -260,15 +263,11 @@ async def verify_magic_link(
     now = utcnow()
     if ensure_utc(vt.expires_at) < now:
         logger.warning("verify: token expired for email=%s", vt.email)
-        await db.delete(vt)
         await db.commit()
         raise HTTPException(status_code=400, detail="Token expired")
 
     email = vt.email
     attribution = vt
-
-    # Delete used token
-    await db.delete(vt)
 
     # Redirect to dashboard — called by Next.js Route Handler server-side,
     # which forwards the Set-Cookie to the browser.

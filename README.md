@@ -1,39 +1,77 @@
 # LetAgentPay
 
-> **Stop your AI agent from spending $1,000 in 30 seconds.**
+[![Release](https://img.shields.io/github/v/release/letagentpay/letagentpay?style=flat-square&label=release&color=blue)](https://github.com/letagentpay/letagentpay/releases)
+[![Changelog](https://img.shields.io/badge/changelog-keep%20a%20changelog-orange?style=flat-square)](docs/CHANGELOG.md)
+[![License: BSL 1.1](https://img.shields.io/badge/license-BSL%201.1-yellow?style=flat-square)](LICENSE)
+[![x402](https://img.shields.io/badge/x402-supported-7c3aed?style=flat-square)](docs/x402.md)
+[![MCP](https://img.shields.io/badge/MCP-server-f97316?style=flat-square)](docs/mcp_server.md)
+[![PyPI](https://img.shields.io/pypi/v/letagentpay?style=flat-square&logo=pypi&logoColor=white&label=python%20sdk)](https://pypi.org/project/letagentpay/)
+[![npm](https://img.shields.io/npm/v/letagentpay?style=flat-square&logo=npm&label=js%20sdk)](https://www.npmjs.com/package/letagentpay)
 
-AI agents can already buy things — call paid APIs, pay for subscriptions, settle x402 requests, run shopping flows. Giving them your card is a risk: no daily limits, no category rules, no audit trail, no kill switch when an agent loops.
+> **The spend-control layer for AI agents.** Budgets, plain-English policies, and human override on top of any payment rail.
 
-LetAgentPay sits between your agent and any payment, with three guarantees:
+**Agents can't read your card statement at 3 a.m.**
+**Agents can't notice they're about to loop and burn $1,000 on the same API.**
+**Agents can't say "no" to themselves.**
+
+So we built the layer that does. LetAgentPay sits between your agent and any payment (Stripe, x402, prepaid wallets, gift cards) with three guarantees:
 
 - **Hard ceiling.** The agent cannot exceed the daily / weekly / monthly budget you set. Period.
-- **Plain-English policies.** Write rules like *"no purchases after midnight"* or *"auto-approve groceries under $50"* — AI converts them to enforced config.
-- **Real-time human override.** Pending requests appear on a live dashboard with one-click approve / reject (SSE updates, mobile push).
+- **Plain-English policies.** Write rules like *"no purchases after midnight"* or *"auto-approve groceries under $50"* — AI converts them to enforced JSON config.
+- **Real-time human override.** Pending requests appear on a live dashboard with one-click approve / reject (SSE updates, mobile push, email).
 
 <p align="center">
   <img src="docs/assets/demo.gif" alt="LetAgentPay demo — agent sends purchase requests, policy engine approves/rejects in real time" width="720">
 </p>
 
-## How It Differs
+## How it compares
 
-| | Card given to agent | Stripe / x402 raw | **LetAgentPay** |
-|---|---|---|---|
-| Daily / weekly / monthly cap | ❌ | ❌ | ✅ |
-| Category rules | ❌ | ❌ | ✅ |
-| Schedule (e.g. business hours only) | ❌ | ❌ | ✅ |
-| Audit trail of every attempt | partial | partial | ✅ |
-| Human-in-the-loop approval | ❌ | ❌ | ✅ |
-| Plain-English policy → config | ❌ | ❌ | ✅ |
-| Works on top of any rail (Stripe, x402, gift cards) | n/a | n/a | ✅ |
+LetAgentPay is the **policy layer**, not another payment rail. It's the only project in the agent-payments space focused on rail-agnostic spend control with human-in-the-loop:
 
-LetAgentPay is the **control plane**. Use it on top of whatever rail you already have.
+|                                            | [Stripe Agent Toolkit](https://github.com/stripe/agent-toolkit) | [Coinbase CDP](https://github.com/coinbase/cdp-sdk) | [BlockRunAI ClawRouter](https://github.com/BlockRunAI/ClawRouter) | [WLFI AgentPay SDK](https://github.com/worldliberty/agentpay-sdk) | **LetAgentPay** |
+| ------------------------------------------ | --------------------- | ------------- | --------------------- | ----------------- | --------------- |
+| **Primary focus**                          | Stripe API for agents | Crypto wallet SDK | LLM router with USDC pay | Self-custodial crypto wallet | **Spend-control policy layer** |
+| **Payment rails**                          | Stripe only           | Crypto only   | LLM API only          | Crypto only       | **Any rail**    |
+| Daily / weekly / monthly cap               | ❌                    | ❌            | ❌                    | ✅                | ✅              |
+| Category rules                             | ❌                    | ❌            | ❌                    | partial           | ✅              |
+| Schedule (e.g. business hours only)        | ❌                    | ❌            | ❌                    | ❌                | ✅              |
+| Plain-English policy → JSON config         | ❌                    | ❌            | ❌                    | ❌                | ✅              |
+| Real-time human approval (SSE + push)      | ❌                    | ❌            | ❌                    | ❌                | ✅              |
+| Audit trail of every attempt               | partial               | partial       | partial               | partial           | ✅              |
+| x402 micropayments                         | ❌                    | partial       | ✅                    | partial           | ✅              |
+| Works on top of an existing rail           | n/a                   | n/a           | n/a                   | n/a               | ✅              |
+| License                                    | MIT                   | MIT           | MIT                   | MIT               | BSL 1.1 → Apache 2.0 |
 
-## What's Inside
+Use LetAgentPay on top of Stripe, x402, or any execution backend you already have.
+
+## x402 — first-class support
+
+[![x402](https://img.shields.io/badge/x402-HTTP_402_micropayments-7c3aed?style=for-the-badge)](https://x402.org)
+
+Every x402 micropayment your agent signs runs through the same policy engine as a Stripe transaction:
+
+- **Hard caps that apply on-chain too.** Daily / weekly / monthly limits apply to x402 the same way they apply to any other rail — one bucket, one source of truth.
+- **Live exchange rates.** USDC ↔ USD conversion happens at authorization time (15-second TTL), so budgets stay in the user's currency.
+- **Non-custodial by design.** LetAgentPay never touches private keys or funds. It signs an authorization; the agent signs the transaction.
+- **tx-hash dedup.** One on-chain transaction cannot close two authorizations — replay protection out of the box.
+- **Actual-amount reconciliation.** Budget is auto-corrected when settlement differs from authorization.
+
+```
+1. Agent → GET resource → HTTP 402 + payment requirements
+2. Agent → POST /x402/authorize → LetAgentPay checks policy → authorized
+3. Agent → signs tx with own wallet → pays → gets resource
+4. Agent → POST /x402/report → tx_hash for audit
+```
+
+Full guide: [docs/x402.md](docs/x402.md) · Authorize endpoint: [Agent API reference — x402](docs/agent_api_reference.md#x402-payment-authorization)
+
+## What's inside
 
 - **8-check policy engine** — status, category, per-request limit, schedule, daily/weekly/monthly limits, budget
 - **Auto-approve** — trusted categories and small amounts go through automatically
-- **Fund holding** — pending requests reserve budget, preventing overspend
-- **x402 support** — sign and authorize HTTP 402 micropayments inside the same policy
+- **Fund holding** — pending requests reserve budget, preventing overspend on races
+- **x402 facilitator-ready** — sign and authorize HTTP 402 micropayments inside the same policy
+- **9 framework integrations** out of the box (Vercel AI SDK, Google ADK, Stripe, OpenAI Agents, LangChain, CrewAI, Claude MCP, OpenClaw, plus raw HTTP)
 
 ## Quick Start (Self-Hosted)
 
@@ -225,6 +263,7 @@ See [docs/integrations/](docs/integrations/) for detailed guides.
 - [Python SDK](docs/python_sdk.md)
 - [TypeScript SDK](docs/typescript_sdk.md)
 - [Budget Rules](docs/budget_rules.md)
+- [x402 Integration](docs/x402.md)
 - [Integrations](docs/integrations/) — Vercel AI SDK, Google ADK, Stripe, OpenAI Agents, LangChain, CrewAI, MCP, OpenClaw
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](docs/CHANGELOG.md)
