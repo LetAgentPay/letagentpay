@@ -1,7 +1,7 @@
 ---
 name: letagentpay
 description: Spending guardrails for AI agents — budget limits, category restrictions, approval workflows, audit trails, and x402 crypto-micropayment authorization.
-version: 1.1.0
+version: 1.2.0
 homepage: https://github.com/LetAgentPay/letagentpay-openclaw
 metadata:
   clawdbot:
@@ -19,7 +19,7 @@ metadata:
 
 # LetAgentPay — Spending Policy Middleware
 
-You have access to LetAgentPay tools for managing purchases with budget controls. Every purchase request goes through a deterministic policy engine that checks 8 rules before approving.
+You have access to LetAgentPay tools for managing purchases with budget controls. Every purchase request goes through a deterministic policy engine that checks 9 rules before approving.
 
 ## When to use these tools
 

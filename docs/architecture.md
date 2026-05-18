@@ -94,15 +94,16 @@ BudgetRule (account-level spending rules)
 Agent                    LetAgentPay                     Human
   │                          │                             │
   ├─ POST /requests ─────────►│                             │
-  │                          ├─ Policy Engine (8 checks)   │
+  │                          ├─ Policy Engine (9 checks)   │
   │                          │  1. Agent status            │
-  │                          │  2. Category allowed        │
-  │                          │  3. Per-request limit       │
-  │                          │  4. Schedule check          │
-  │                          │  5. Daily limit             │
-  │                          │  6. Weekly limit            │
-  │                          │  7. Monthly limit           │
-  │                          │  8. Budget remaining        │
+  │                          │  2. Velocity (req/min,/hr)  │
+  │                          │  3. Category allowed        │
+  │                          │  4. Per-request limit       │
+  │                          │  5. Schedule check          │
+  │                          │  6. Daily limit             │
+  │                          │  7. Weekly limit            │
+  │                          │  8. Monthly limit           │
+  │                          │  9. Budget remaining        │
   │                          │                             │
   │  ◄── auto_approved ────  │  (if ≤ auto_approve &&      │
   │                          │   all checks pass)          │

@@ -19,6 +19,8 @@ export function PolicyPreview({ policy, currency }: PolicyPreviewProps) {
     policy.daily_limit != null ||
     policy.weekly_limit != null ||
     policy.monthly_limit != null ||
+    policy.requests_per_minute != null ||
+    policy.requests_per_hour != null ||
     (allowedCategories && allowedCategories.length > 0) ||
     (blockedCategories && blockedCategories.length > 0) ||
     schedule != null ||
@@ -55,6 +57,18 @@ export function PolicyPreview({ policy, currency }: PolicyPreviewProps) {
           <div>
             <span className="text-muted-foreground">Monthly limit:</span>{" "}
             {formatMoney(policy.monthly_limit, currency)}
+          </div>
+        )}
+        {policy.requests_per_minute != null && (
+          <div>
+            <span className="text-muted-foreground">Requests per minute:</span>{" "}
+            {policy.requests_per_minute}
+          </div>
+        )}
+        {policy.requests_per_hour != null && (
+          <div>
+            <span className="text-muted-foreground">Requests per hour:</span>{" "}
+            {policy.requests_per_hour}
           </div>
         )}
 

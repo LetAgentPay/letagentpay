@@ -47,6 +47,8 @@ export interface Policy {
   daily_limit?: number;
   weekly_limit?: number;
   monthly_limit?: number;
+  requests_per_minute?: number;
+  requests_per_hour?: number;
   allowed_categories?: string[];
   blocked_categories?: string[];
   schedule?: PolicySchedule;

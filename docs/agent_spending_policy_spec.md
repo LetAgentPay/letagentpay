@@ -1,13 +1,15 @@
 # Agent Spending Policy Specification (ASPS)
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Stable
 **Authors:** LetAgentPay contributors
-**Date:** 2026-04-09
+**Date:** 2026-05-15
 
 ## Abstract
 
-ASPS v1 defines a vendor-neutral JSON format for describing spending rules for a single AI agent. It covers budgets, limits, categories, schedules, auto-approval, and account-level budget rules.
+ASPS v1 defines a vendor-neutral JSON format for describing spending rules for a single AI agent. It covers budgets, limits, velocity caps, categories, schedules, auto-approval, and account-level budget rules.
+
+**Changes in 1.1:** added `requests_per_minute` and `requests_per_hour` velocity-cap fields, plus the corresponding `velocity_limit` standard check (Section 9). 1.1 is fully backward-compatible with 1.0 policies — both new fields are optional and an absent value preserves 1.0 evaluation behavior.
 
 ASPS is not tied to a specific payment provider or AI framework. It works with Stripe, Visa, Google AP2, LangChain, CrewAI, OpenClaw, or any other system. LetAgentPay is the reference implementation.
 
@@ -40,11 +42,13 @@ A Policy is a JSON object. All fields are optional. Omitted fields impose no res
 
 ```json
 {
-  "version": "1.0",
+  "version": "1.1",
   "daily_limit": 500.00,
   "weekly_limit": 2000.00,
   "monthly_limit": 5000.00,
   "per_request_limit": 200.00,
+  "requests_per_minute": 5,
+  "requests_per_hour": 60,
   "allowed_categories": ["groceries", "food_delivery"],
   "blocked_categories": [],
   "schedule": { ... },
@@ -57,11 +61,13 @@ A Policy is a JSON object. All fields are optional. Omitted fields impose no res
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `version` | `string` | Spec version (e.g. `"0.1"`). Optional, defaults to latest |
+| `version` | `string` | Spec version (e.g. `"1.1"`). Optional, defaults to latest |
 | `daily_limit` | `number` | Maximum spending per calendar day |
 | `weekly_limit` | `number` | Maximum spending per ISO week (Mon–Sun) |
 | `monthly_limit` | `number` | Maximum spending per calendar month |
 | `per_request_limit` | `number` | Maximum amount for a single request |
+| `requests_per_minute` | `integer` | Maximum number of purchase requests in a single calendar minute. Caps frequency independently of amount — defends against runaway-loop spending of many small amounts |
+| `requests_per_hour` | `integer` | Maximum number of purchase requests in a single calendar hour. Same intent as `requests_per_minute` over a longer window |
 | `allowed_categories` | `string[]` | Whitelist of categories. If set, only these categories are allowed |
 | `blocked_categories` | `string[]` | Blacklist of categories. Ignored if `allowed_categories` is set |
 | `schedule` | `Schedule` | Time-based access rules |
@@ -73,6 +79,14 @@ A Policy is a JSON object. All fields are optional. Omitted fields impose no res
 - All amounts are in the agent's configured currency (currency is not part of the policy — it's part of the agent/account configuration)
 - Amounts MUST be non-negative
 - Limit checks are inclusive: a $200 request against a $200 `per_request_limit` passes
+
+### 3.2.1 Velocity semantics
+
+- `requests_per_minute` and `requests_per_hour` are non-negative integers
+- Limits are inclusive: `requests_per_minute: 5` allows exactly 5 requests in a calendar minute; the 6th MUST fail
+- Windows are calendar-aligned (UTC or implementation-defined timezone), not sliding
+- A request counts against the velocity counter only after it passes all preceding checks and is recorded as `approved`, `auto_approved`, or `pending`. Requests rejected by earlier checks (status, category, etc.) MUST NOT count
+- Held (pending) requests count against velocity until they are released (rejected or expired). Approved → completed transitions do not increment the counter a second time
 
 ### 3.3 Category semantics
 
@@ -247,7 +261,7 @@ Each rule evaluation produces a check result.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `rule` | `string` | Rule identifier (e.g. `status`, `category`, `daily_limit`, `budget`, `account_budget:Rule Name`) |
+| `rule` | `string` | Rule identifier (e.g. `status`, `velocity_limit`, `category`, `daily_limit`, `budget`, `account_budget:Rule Name`) |
 | `result` | `enum` | `pass` or `fail` |
 | `detail` | `string` | Human-readable explanation |
 
@@ -256,16 +270,29 @@ Each rule evaluation produces a check result.
 A conforming policy engine MUST evaluate checks in this order:
 
 1. **Agent status** — agent must be active
-2. **Category** — against allowed/blocked lists
-3. **Per-request limit** — single transaction cap
-4. **Schedule** — time window check
-5. **Daily limit** — against daily spending (including held amounts)
-6. **Weekly limit** — against weekly spending (including held amounts)
-7. **Monthly limit** — against monthly spending (including held amounts)
-8. **Budget** — against remaining budget (budget - spent - held)
-9. **Account-level budget rules** — aggregate checks across all agents
+2. **Velocity limit** — projected request count vs. `requests_per_minute` / `requests_per_hour`
+3. **Category** — against allowed/blocked lists
+4. **Per-request limit** — single transaction cap
+5. **Schedule** — time window check
+6. **Daily limit** — against daily spending (including held amounts)
+7. **Weekly limit** — against weekly spending (including held amounts)
+8. **Monthly limit** — against monthly spending (including held amounts)
+9. **Budget** — against remaining budget (budget - spent - held)
+10. **Account-level budget rules** — aggregate checks across all agents
 
-If any check fails, the request is rejected. All checks are evaluated (not short-circuited) to provide a complete report.
+If any check fails, the request is rejected. Checks SHOULD be evaluated in full and reported back to the caller, with one exception:
+
+**Velocity short-circuit.** When the velocity check fails, the engine MAY skip checks 3–10 and return immediately with at minimum the `status` and `velocity_limit` results. This is permitted because the explicit purpose of velocity caps is to absorb runaway-loop traffic — a runaway agent firing thousands of requests per minute would otherwise force the engine to perform every other check (including counter reads, schedule evaluation, and account-rule joins) on every rejected attempt. Implementations that prioritize completeness of the audit report over throughput MAY choose to evaluate all checks; both behaviors are conformant.
+
+### 9.1 Suppression of repeated velocity rejections
+
+A runaway agent can hit the velocity limit thousands of times within a single window. To preserve the audit trail without log spam, implementations MAY suppress duplicate rejection records within the same velocity window:
+
+- The first rejection in a window is persisted in full (audit record + check results).
+- Subsequent rejections in the same window MAY be suppressed from persistent storage. The engine MUST still return a valid response to the caller, and the response SHOULD reference the surviving audit record (e.g., reuse its `request_id`) so callers can fetch a coherent rejection reason.
+- Implementations SHOULD emit a real-time event (e.g., pub/sub) on each suppressed rejection so dashboards and alerting can observe the throttling.
+
+This suppression behavior is permitted but not required. Implementations that record every rejection are also conformant.
 
 ## 10. Fund Holding
 
@@ -280,9 +307,11 @@ This prevents over-commitment when multiple requests are pending simultaneously.
 ## 11. Decision Flow
 
 ```
-Request → Agent Policy Checks (1-8)
-  ├── Any check fails → REJECTED
-  └── All checks pass → Account Budget Rules (9)
+Request → Agent Policy Checks (1-9)
+  ├── Velocity check fails → REJECTED (engine MAY short-circuit and suppress
+  │                                      duplicate audit records within the window)
+  ├── Any other check fails → REJECTED
+  └── All checks pass → Account Budget Rules (10)
         ├── Any rule fails → REJECTED
         └── All rules pass → Auto-Approve check
               ├── Qualifies → APPROVED (auto)
@@ -301,7 +330,7 @@ Categories are user-defined strings. There is no fixed set mandated by the speci
 
 ### 12.3 Custom check rules
 
-Implementations MAY add custom check rules. Custom rules MUST be evaluated after the standard 9 checks and MUST use a namespaced rule identifier (e.g. `custom:geo_fence`).
+Implementations MAY add custom check rules. Custom rules MUST be evaluated after the standard 10 checks and MUST use a namespaced rule identifier (e.g. `custom:geo_fence`).
 
 ### 12.4 x402 Settlement Policy
 
@@ -342,11 +371,13 @@ The schema defines all objects: `Policy` (root), `Schedule`, `ScheduleOverride`,
 
 ```json
 {
-  "version": "1.0",
+  "version": "1.1",
   "daily_limit": 500.00,
   "weekly_limit": 2000.00,
   "monthly_limit": 5000.00,
   "per_request_limit": 200.00,
+  "requests_per_minute": 5,
+  "requests_per_hour": 60,
   "allowed_categories": [
     "groceries",
     "food_delivery",
@@ -381,6 +412,7 @@ The schema defines all objects: `Policy` (root), `Schedule`, `ScheduleOverride`,
 This policy says:
 - Agent can spend up to $500/day, $2000/week, $5000/month
 - Single purchase up to $200
+- No more than 5 requests per minute or 60 per hour (runaway-loop guard)
 - Only groceries, food delivery, subscriptions, and transport
 - Weekdays 08:00–22:00, weekends 10:00–18:00, no spending on Wednesdays
 - Weekend daily limit reduced to $100
@@ -390,9 +422,13 @@ This policy says:
 
 An implementation is **ASPS-conformant** if it:
 1. Accepts Policy objects as defined in Section 3
-2. Evaluates all 9 standard checks in the specified order (Section 9)
+2. Evaluates the 10 standard checks in the specified order (Section 9), with velocity short-circuit and suppression behaviors as permitted in Sections 9 and 9.1
 3. Produces Check Result objects as defined in Section 8
 4. Implements fund holding as defined in Section 10
 5. Ignores unknown fields in Policy objects (forward compatibility)
 
 An implementation MAY extend the spec with custom checks, categories, and metadata, provided it does not alter the behavior of standard checks.
+
+### Backward compatibility (1.0 → 1.1)
+
+A 1.0 policy is a valid 1.1 policy: both new velocity fields are optional, and an absent value means "no velocity cap" — identical to 1.0 behavior. A 1.0-only engine that consumes a 1.1 policy MUST ignore the unknown velocity fields per the forward-compatibility rule (point 5 above), which means it will under-enforce on policies that rely on velocity caps. Authors who depend on velocity enforcement SHOULD declare `"version": "1.1"` and verify the engine's reported version.

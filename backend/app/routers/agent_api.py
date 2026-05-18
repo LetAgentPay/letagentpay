@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -37,6 +38,8 @@ from app.services.spending import (
     add_account_spent,
     add_held,
     add_spent,
+    add_velocity,
+    claim_velocity_log_slot,
     remove_account_held,
     remove_held,
 )
@@ -137,8 +140,50 @@ async def create_purchase_request(
     }
 
     if not all_passed:
+        # Velocity throttling: cap rejected-record writes at one per window per
+        # agent. Without this a runaway loop would spam the audit log with
+        # thousands of identical rejected rows — defeating the whole point of
+        # having velocity limits. SDK callers always receive a valid request_id
+        # pointing at the surviving audit record.
+        velocity_check = next(
+            (c for c in checks if c.rule == "velocity_limit" and c.result == "fail"),
+            None,
+        )
+        req_id = str(uuid.uuid4())
+        if velocity_check is not None:
+            scope = "minute" if "/minute" in velocity_check.detail else "hour"
+            existing_id = await claim_velocity_log_slot(redis, agent.id, scope, req_id)
+            if existing_id is not None:
+                await publish_event(
+                    redis,
+                    agent.id,
+                    "velocity_throttled",
+                    {
+                        "request_id": existing_id,
+                        "scope": scope,
+                        "amount": str(body.amount),
+                        "currency": request_currency,
+                        "category": resolved_category,
+                    },
+                )
+                resp = PurchaseRequestResponse(
+                    request_id=existing_id,
+                    status="rejected",
+                    currency=request_currency,
+                    category=resolved_category,
+                    original_category=original_category,
+                    policy_check=policy_check_data,
+                    auto_approved=False,
+                )
+                if idempotency_key:
+                    await redis.set(
+                        cache_key, resp.model_dump_json(), ex=_IDEMPOTENCY_TTL
+                    )
+                return resp
+
         # Rejected by agent policy — save but don't create pending request
         req = PurchaseRequest(
+            id=req_id,
             agent_id=agent.id,
             amount=body.amount,
             currency=request_currency,
@@ -311,6 +356,7 @@ async def create_purchase_request(
             timezone,
             active_temporal_rule_ids,
         )
+        await add_velocity(redis, agent.id)
         # Auto-replenish if remaining dropped below threshold
         await maybe_auto_replenish(agent, db)
         await db.commit()
@@ -389,6 +435,7 @@ async def create_purchase_request(
         timezone,
         active_temporal_rule_ids,
     )
+    await add_velocity(redis, agent.id)
     await db.commit()
     await db.refresh(req)
 

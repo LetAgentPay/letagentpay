@@ -162,7 +162,7 @@ See the full [Agent API Reference](docs/agent_api_reference.md).
 AI Agent                      LetAgentPay                    Human
    │                              │                            │
    ├── POST /agent-api/requests ─►│                            │
-   │                              ├── policy engine (8 checks) │
+   │                              ├── policy engine (9 checks) │
    │                              │                            │
    │   ┌─ auto_approved ──────────┤                            │
    │   │                          ├── pending ──► dashboard ──►│

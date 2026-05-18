@@ -383,3 +383,84 @@ class TestCategoryResolution:
         data = resp.json()
         assert data["category"] == "groceries"
         assert data["original_category"] is None
+
+
+class TestVelocityLimit:
+    """Velocity limit caps request frequency and suppresses log spam."""
+
+    async def _set_velocity_policy(self, db, agent, per_minute):
+        agent.policy = {
+            "requests_per_minute": per_minute,
+            "allowed_categories": ["groceries"],
+            "auto_approve": {
+                "enabled": True,
+                "max_amount": 500,
+                "categories": ["groceries"],
+            },
+        }
+        await db.commit()
+
+    async def test_under_limit_passes(self, client, db, mock_redis, agent, account):
+        await self._set_velocity_policy(db, agent, per_minute=3)
+        token = agent.token
+
+        for _ in range(3):
+            resp = await client.post(
+                "/api/v1/agent-api/requests",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"amount": 10.00, "category": "groceries"},
+            )
+            assert resp.status_code == 201
+            assert resp.json()["status"] == "auto_approved"
+
+    async def test_over_limit_rejected_and_log_suppressed(
+        self, client, db, mock_redis, agent, account
+    ):
+        """4th + 5th requests trigger velocity_limit; only one rejected row in DB."""
+        await self._set_velocity_policy(db, agent, per_minute=3)
+        token = agent.token
+
+        for _ in range(3):
+            resp = await client.post(
+                "/api/v1/agent-api/requests",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"amount": 10.00, "category": "groceries"},
+            )
+            assert resp.status_code == 201
+
+        # 4th request: rejected with velocity_limit, written to DB
+        resp4 = await client.post(
+            "/api/v1/agent-api/requests",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"amount": 10.00, "category": "groceries"},
+        )
+        assert resp4.status_code == 201
+        data4 = resp4.json()
+        assert data4["status"] == "rejected"
+        rejected_id = data4["request_id"]
+        assert any(
+            c["rule"] == "velocity_limit" and c["result"] == "fail"
+            for c in data4["policy_check"]["checks"]
+        )
+
+        # 5th request: rejected, suppressed (no new DB row), reuses 4th's id
+        resp5 = await client.post(
+            "/api/v1/agent-api/requests",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"amount": 10.00, "category": "groceries"},
+        )
+        assert resp5.status_code == 201
+        data5 = resp5.json()
+        assert data5["status"] == "rejected"
+        assert data5["request_id"] == rejected_id
+
+        # DB must contain exactly one rejected row, not two
+        result = await db.execute(
+            select(PurchaseRequest).where(
+                PurchaseRequest.agent_id == agent.id,
+                PurchaseRequest.status == "rejected",
+            )
+        )
+        rejected_rows = result.scalars().all()
+        assert len(rejected_rows) == 1
+        assert rejected_rows[0].id == rejected_id

@@ -13,6 +13,7 @@ from app.services.spending import (
     get_account_counters_atomic,
     get_agent_counters_atomic,
     get_rule_counters_atomic,
+    get_velocity_counters_atomic,
 )
 
 
@@ -219,6 +220,53 @@ def _check_monthly_limit(
     )
 
 
+def _check_velocity(
+    per_minute_count: int,
+    per_hour_count: int,
+    policy: Policy,
+) -> PolicyCheckResult:
+    """Check that the projected request count stays within velocity limits.
+
+    Counters reflect requests already accepted in the current window, so the
+    projected value is `count + 1`. Limits are inclusive: limit=N allows
+    exactly N requests per window.
+    """
+    if policy.requests_per_minute is None and policy.requests_per_hour is None:
+        return PolicyCheckResult(
+            rule="velocity_limit", result="pass", detail="No velocity limit set"
+        )
+
+    failures = []
+    if (
+        policy.requests_per_minute is not None
+        and per_minute_count + 1 > policy.requests_per_minute
+    ):
+        failures.append(
+            f"{per_minute_count + 1} would exceed {policy.requests_per_minute}/minute"
+        )
+    if (
+        policy.requests_per_hour is not None
+        and per_hour_count + 1 > policy.requests_per_hour
+    ):
+        failures.append(
+            f"{per_hour_count + 1} would exceed {policy.requests_per_hour}/hour"
+        )
+
+    if failures:
+        return PolicyCheckResult(
+            rule="velocity_limit", result="fail", detail="; ".join(failures)
+        )
+
+    parts = []
+    if policy.requests_per_minute is not None:
+        parts.append(f"{per_minute_count + 1}/{policy.requests_per_minute} this minute")
+    if policy.requests_per_hour is not None:
+        parts.append(f"{per_hour_count + 1}/{policy.requests_per_hour} this hour")
+    return PolicyCheckResult(
+        rule="velocity_limit", result="pass", detail=", ".join(parts)
+    )
+
+
 def _check_budget(amount: Decimal, remaining: Decimal) -> PolicyCheckResult:
     if remaining >= amount:
         return PolicyCheckResult(
@@ -247,16 +295,25 @@ async def check_policy(
     # 1. Status
     checks.append(_check_status(agent))
 
-    # 2. Category
+    # 2. Velocity (cheap-fail: short-circuit before hitting Redis for spend
+    # counters or DB writes — the whole point is to absorb runaway loops)
+    if policy.requests_per_minute is not None or policy.requests_per_hour is not None:
+        per_minute, per_hour = await get_velocity_counters_atomic(redis, agent.id)
+        velocity_check = _check_velocity(per_minute, per_hour, policy)
+        checks.append(velocity_check)
+        if velocity_check.result == "fail":
+            return checks, False
+
+    # 3. Category
     checks.append(_check_category(request.category, policy))
 
-    # 3. Per-request limit
+    # 4. Per-request limit
     checks.append(_check_per_request_limit(request.amount, policy))
 
-    # 4. Schedule
+    # 5. Schedule
     checks.append(_check_schedule(policy, timezone))
 
-    # 5-7. Daily/Weekly/Monthly limits (atomic read via Lua script)
+    # 6-8. Daily/Weekly/Monthly limits (atomic read via Lua script)
     counters = await get_agent_counters_atomic(redis, agent.id, currency, timezone)
     checks.append(
         _check_daily_limit(
@@ -274,7 +331,7 @@ async def check_policy(
         )
     )
 
-    # 8. Budget (remaining minus held)
+    # 9. Budget (remaining minus held)
     remaining = agent.budget - agent.spent - agent.held
     checks.append(_check_budget(request.amount, remaining))
 

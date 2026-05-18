@@ -60,7 +60,7 @@ Get your agent token at [letagentpay.com](https://letagentpay.com) or from your 
 | `x402_report` | Report a completed transaction (tx_hash for audit) |
 | `x402_budget` | View x402 budget, allowed chains, wallets |
 
-Every request goes through deterministic policy checks: agent status, category, per-request limit, schedule, daily/weekly/monthly limits, total budget, chain whitelist, domain filter, and stablecoin depeg protection.
+Every request goes through deterministic policy checks: agent status, velocity (requests/minute, /hour — runaway-loop guard), category, per-request limit, schedule, daily/weekly/monthly limits, total budget, chain whitelist, domain filter, and stablecoin depeg protection.
 
 ## Environment Variables
 

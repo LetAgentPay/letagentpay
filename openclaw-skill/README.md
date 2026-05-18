@@ -4,16 +4,17 @@ Spending guardrails for your OpenClaw agent. Set budgets, restrict categories, e
 
 ## What it does
 
-Every time your agent wants to spend money, the request goes through 8 policy checks:
+Every time your agent wants to spend money, the request goes through 9 policy checks:
 
 1. Agent status (active/paused)
-2. Category (allowed/blocked)
-3. Per-request limit
-4. Schedule (time-of-day, day-of-week)
-5. Daily spending limit
-6. Weekly spending limit
-7. Monthly spending limit
-8. Total budget
+2. Velocity (requests per minute / hour — runaway-loop guard)
+3. Category (allowed/blocked)
+4. Per-request limit
+5. Schedule (time-of-day, day-of-week)
+6. Daily spending limit
+7. Weekly spending limit
+8. Monthly spending limit
+9. Total budget
 
 If all checks pass and auto-approve criteria are met, the purchase proceeds instantly. Otherwise, you get a notification in your chat to approve or reject.
 

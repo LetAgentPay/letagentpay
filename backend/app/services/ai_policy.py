@@ -14,6 +14,8 @@ Available fields:
 - weekly_limit: number
 - monthly_limit: number
 - per_request_limit: number (max single purchase)
+- requests_per_minute: integer (max purchase requests per minute — rate cap, protects against runaway loops)
+- requests_per_hour: integer (max purchase requests per hour — rate cap, protects against runaway loops)
 - allowed_categories: string[] (from: {categories})
 - blocked_categories: string[]
 - schedule: {{ timezone: string, default: {{ allow: "HH:MM-HH:MM" }}, overrides: [{{ days: string[], allow?: string, deny?: boolean, daily_limit?: number }}] }}

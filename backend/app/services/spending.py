@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -522,6 +522,75 @@ async def get_rule_counters_atomic(
     return _from_subunits(raw[0]), _from_subunits(raw[1])
 
 
+# ---------------------------------------------------------------------------
+# Agent-level velocity (request frequency)
+# ---------------------------------------------------------------------------
+
+# UTC fixed-window keys — minute/hour boundaries are timezone-invariant,
+# so no per-account tz handling needed here.
+VELOCITY_MINUTE_TTL = 120  # 2 minutes (60s + buffer for clock skew)
+VELOCITY_HOUR_TTL = 3700  # 1 hour + 100s buffer
+VELOCITY_LOG_MINUTE_TTL = 60
+VELOCITY_LOG_HOUR_TTL = 3600
+
+
+def _velocity_minute_key(agent_id: str) -> str:
+    return f"velocity:{agent_id}:minute:{datetime.now(UTC).strftime('%Y%m%d%H%M')}"
+
+
+def _velocity_hour_key(agent_id: str) -> str:
+    return f"velocity:{agent_id}:hour:{datetime.now(UTC).strftime('%Y%m%d%H')}"
+
+
+async def add_velocity(redis: aioredis.Redis, agent_id: str) -> None:
+    """Increment per-minute and per-hour velocity counters for an agent."""
+    minute_key = _velocity_minute_key(agent_id)
+    hour_key = _velocity_hour_key(agent_id)
+    await redis.incrby(minute_key, 1)
+    await redis.expire(minute_key, VELOCITY_MINUTE_TTL)
+    await redis.incrby(hour_key, 1)
+    await redis.expire(hour_key, VELOCITY_HOUR_TTL)
+
+
+async def get_velocity_counters_atomic(
+    redis: aioredis.Redis, agent_id: str
+) -> tuple[int, int]:
+    """Read (per_minute, per_hour) request counts atomically."""
+    keys = [_velocity_minute_key(agent_id), _velocity_hour_key(agent_id)]
+    raw = await redis.eval(_MGET_SCRIPT, len(keys), *keys)  # type: ignore[misc]
+    return int(raw[0] or 0), int(raw[1] or 0)
+
+
+async def claim_velocity_log_slot(
+    redis: aioredis.Redis, agent_id: str, scope: str, request_id: str
+) -> str | None:
+    """Atomically claim the audit-record slot for the current velocity window.
+
+    On a runaway loop the agent can hit the velocity limit thousands of times;
+    we only want one rejected-record in the DB per window to keep the audit
+    trail intact without log spam. SDK callers always get a valid request_id
+    pointing at the first record in the window, so they can fetch it.
+
+    scope: "minute" or "hour" (use the narrower window when both fail).
+    Returns None if this caller won the slot (write the DB record using
+    request_id). Returns existing request_id otherwise (suppress DB write).
+    """
+    if scope == "minute":
+        bucket = datetime.now(UTC).strftime("%Y%m%d%H%M")
+        ttl = VELOCITY_LOG_MINUTE_TTL
+    else:
+        bucket = datetime.now(UTC).strftime("%Y%m%d%H")
+        ttl = VELOCITY_LOG_HOUR_TTL
+    key = f"velocity_logged:{agent_id}:{scope}:{bucket}"
+    won = await redis.set(key, request_id, ex=ttl, nx=True)
+    if won:
+        return None
+    existing = await redis.get(key)
+    if isinstance(existing, bytes):
+        return existing.decode()
+    return existing
+
+
 async def _scan_keys(redis: aioredis.Redis, pattern: str) -> list:
     """Collect keys matching pattern using SCAN (non-blocking, unlike KEYS)."""
     keys = []
@@ -534,6 +603,8 @@ async def clear_agent_spending(redis: aioredis.Redis, agent_id: str) -> None:
     """Delete all spending/hold Redis keys for an agent."""
     keys = await _scan_keys(redis, f"spent:{agent_id}:*")
     keys += await _scan_keys(redis, f"hold:{agent_id}:*")
+    keys += await _scan_keys(redis, f"velocity:{agent_id}:*")
+    keys += await _scan_keys(redis, f"velocity_logged:{agent_id}:*")
     if keys:
         await redis.delete(*keys)
 

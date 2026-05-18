@@ -126,7 +126,7 @@ Returns all valid category strings.
 ## Request Lifecycle
 
 1. Agent sends \`POST /requests\` with amount, category, description
-2. Policy engine runs 8+ checks: status, category, per-request limit, schedule, daily/weekly/monthly limits, budget, account-level budget rules
+2. Policy engine runs 10 standard checks (ASPS v1.1): status, velocity (requests_per_minute / requests_per_hour), category, per-request limit, schedule, daily/weekly/monthly limits, budget, account-level budget rules
 3. If all checks pass AND auto-approve criteria met → \`auto_approved\` (immediate)
 4. If all checks pass but no auto-approve → \`pending\` (human reviews in dashboard)
 5. If any check fails → \`rejected\` (with detailed policy_check explaining why)

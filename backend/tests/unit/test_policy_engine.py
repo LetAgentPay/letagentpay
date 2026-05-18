@@ -14,6 +14,7 @@ from app.services.policy_engine import (
     _check_schedule,
     _check_status,
     _check_time_window,
+    _check_velocity,
     _check_weekly_limit,
     check_policy,
     evaluate_budget_rules,
@@ -234,6 +235,65 @@ class TestCheckBudget:
 # ---------------------------------------------------------------------------
 
 
+class TestCheckVelocity:
+    def test_no_limits_set(self):
+        r = _check_velocity(0, 0, Policy())
+        assert r.result == "pass"
+        assert r.rule == "velocity_limit"
+
+    def test_per_minute_under_limit(self):
+        r = _check_velocity(4, 0, Policy(requests_per_minute=10))
+        assert r.result == "pass"
+
+    def test_per_minute_at_limit_fails(self):
+        # counter=10 means 10 requests already accepted; the 11th would exceed
+        r = _check_velocity(10, 0, Policy(requests_per_minute=10))
+        assert r.result == "fail"
+        assert "/minute" in r.detail
+
+    def test_per_minute_one_below_limit_passes(self):
+        r = _check_velocity(9, 0, Policy(requests_per_minute=10))
+        assert r.result == "pass"
+
+    def test_per_hour_under_limit(self):
+        r = _check_velocity(0, 50, Policy(requests_per_hour=100))
+        assert r.result == "pass"
+
+    def test_per_hour_at_limit_fails(self):
+        r = _check_velocity(0, 100, Policy(requests_per_hour=100))
+        assert r.result == "fail"
+        assert "/hour" in r.detail
+
+    def test_both_set_minute_fails(self):
+        r = _check_velocity(
+            10, 50, Policy(requests_per_minute=10, requests_per_hour=100)
+        )
+        assert r.result == "fail"
+        assert "/minute" in r.detail
+        assert "/hour" not in r.detail
+
+    def test_both_set_hour_fails(self):
+        r = _check_velocity(
+            5, 100, Policy(requests_per_minute=10, requests_per_hour=100)
+        )
+        assert r.result == "fail"
+        assert "/hour" in r.detail
+
+    def test_both_set_both_fail(self):
+        r = _check_velocity(
+            20, 200, Policy(requests_per_minute=10, requests_per_hour=100)
+        )
+        assert r.result == "fail"
+        assert "/minute" in r.detail
+        assert "/hour" in r.detail
+
+    def test_both_set_both_pass(self):
+        r = _check_velocity(
+            5, 50, Policy(requests_per_minute=10, requests_per_hour=100)
+        )
+        assert r.result == "pass"
+
+
 class TestCheckPolicy:
     async def test_all_pass(self, mock_redis):
         agent = FakeAgent(
@@ -273,6 +333,45 @@ class TestCheckPolicy:
         req = make_request()
         checks, passed = await check_policy(agent, req, mock_redis, "USD", "UTC")
         assert passed is False
+
+    async def test_velocity_fail_short_circuits(self, mock_redis):
+        """Velocity-fail must skip downstream checks to absorb runaway loops."""
+        from app.services.spending import add_velocity
+
+        agent = FakeAgent(
+            budget="10000",
+            policy={
+                "requests_per_minute": 2,
+                "allowed_categories": ["groceries"],
+            },
+        )
+        # Pre-fill counter to the limit so the next check fails
+        await add_velocity(mock_redis, agent.id)
+        await add_velocity(mock_redis, agent.id)
+        req = make_request(amount=Decimal("100"), category="groceries")
+        checks, passed = await check_policy(agent, req, mock_redis, "USD", "UTC")
+        assert passed is False
+        rules = [c.rule for c in checks]
+        assert "velocity_limit" in rules
+        # Short-circuit: downstream checks must not appear
+        assert "category" not in rules
+        assert "budget" not in rules
+
+    async def test_velocity_under_limit_runs_full_chain(self, mock_redis):
+        agent = FakeAgent(
+            budget="10000",
+            policy={
+                "requests_per_minute": 100,
+                "allowed_categories": ["groceries"],
+            },
+        )
+        req = make_request(amount=Decimal("100"), category="groceries")
+        checks, passed = await check_policy(agent, req, mock_redis, "USD", "UTC")
+        assert passed is True
+        rules = [c.rule for c in checks]
+        assert "velocity_limit" in rules
+        assert "category" in rules
+        assert "budget" in rules
 
 
 # ---------------------------------------------------------------------------

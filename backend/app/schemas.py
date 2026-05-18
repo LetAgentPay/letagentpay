@@ -193,6 +193,8 @@ class Policy(BaseModel):
     weekly_limit: Decimal | None = Field(default=None, ge=0, le=9_999_999)
     monthly_limit: Decimal | None = Field(default=None, ge=0, le=9_999_999)
     per_request_limit: Decimal | None = Field(default=None, ge=0, le=9_999_999)
+    requests_per_minute: int | None = Field(default=None, ge=1, le=10_000)
+    requests_per_hour: int | None = Field(default=None, ge=1, le=1_000_000)
     allowed_categories: list[str] | None = None
     blocked_categories: list[str] | None = None
     schedule: Schedule | None = None

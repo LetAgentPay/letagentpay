@@ -98,7 +98,10 @@ def mock_redis():
         return store.get(key)
 
     async def _set(key, value, *args, **kwargs):
+        if kwargs.get("nx") and key in store:
+            return None
         store[key] = str(value)
+        return True
 
     async def _delete(*keys):
         for k in keys:

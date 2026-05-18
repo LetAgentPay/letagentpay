@@ -45,6 +45,8 @@ For local development: `http://localhost:8000/api/v1/agent-api`
   "policy_check": {
     "passed": true,
     "checks": [
+      {"rule": "status", "result": "pass", "detail": "..."},
+      {"rule": "velocity_limit", "result": "pass", "detail": "3/5 this minute"},
       {"rule": "category", "result": "pass", "detail": "..."},
       {"rule": "per_request_limit", "result": "pass", "detail": "..."}
     ]
@@ -54,6 +56,8 @@ For local development: `http://localhost:8000/api/v1/agent-api`
   "expires_at": null
 }
 ```
+
+**Velocity throttling.** When the agent's policy sets `requests_per_minute` or `requests_per_hour` and the limit is exceeded, the response has `status: "rejected"` and `policy_check.checks` includes `velocity_limit` with `result: "fail"`. Subsequent rejected requests within the same window do **not** create new audit records — the response carries the same `request_id` as the first rejection in the window, protecting the audit log from runaway-loop spam. See [ASPS spec § 9.1](agent_spending_policy_spec.md#91-suppression-of-repeated-velocity-rejections).
 
 **Examples:**
 
@@ -194,6 +198,8 @@ If `actual_amount` differs from the requested amount, the agent's balance is adj
   "policy": {
     "daily_limit": 5000,
     "per_request_limit": 2000,
+    "requests_per_minute": 5,
+    "requests_per_hour": 60,
     "allowed_categories": ["groceries", "food_delivery"],
     "auto_approve": {
       "enabled": true,
@@ -203,6 +209,8 @@ If `actual_amount` differs from the requested amount, the agent's balance is adj
   }
 }
 ```
+
+The optional integer fields `requests_per_minute` / `requests_per_hour` cap the number of purchase requests in a calendar window — a runaway-loop guard that limits frequency independently of amount. Full semantics in [ASPS § 3.2.1](agent_spending_policy_spec.md#321-velocity-semantics).
 
 ---
 
