@@ -38,6 +38,16 @@ class TestSendLink:
         assert len(token.otp_code) == 6
         assert token.otp_code.isdigit()
 
+    async def test_send_link_rejects_invalid_email(self, client, db):
+        """Garbage must be rejected by the schema, not by Resend at send time."""
+        for bad in ["not-an-email", "no@tld", "a b@example.com", "", "@example.com"]:
+            resp = await client.post("/api/v1/auth/send-link", json={"email": bad})
+            assert resp.status_code == 422, bad
+
+        # And nothing was committed to the DB on the way
+        result = await db.execute(select(VerificationToken))
+        assert result.scalars().all() == []
+
     async def test_send_link_replaces_old_tokens(self, client, db):
         await client.post("/api/v1/auth/send-link", json={"email": "dup@example.com"})
         await client.post("/api/v1/auth/send-link", json={"email": "dup@example.com"})

@@ -154,7 +154,7 @@ async def create_session(client_ip: str, db: AsyncSession) -> dict:
     redis = get_redis()
     ttl = settings.playground_session_ttl_minutes * 60
 
-    # Rate limit: 1 session per IP per 10 minutes
+    # Rate limit: 3 sessions per IP per 10 minutes
     ip_key = f"{_IP_KEY}{client_ip}"
     current = await redis.get(ip_key)
     if current and int(current) >= 3:

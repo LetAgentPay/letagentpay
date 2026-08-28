@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-08-28
+
+### Fixed
+- **500 on a NUL byte in the URL** — `\x00` in a path or query parameter reached asyncpg and crashed with `CharacterNotInRepertoireError` (Postgres cannot store `0x00` in `text`). This affected every route passing a raw string into a `WHERE` clause. A new `RejectNullBytesMiddleware` now returns 400 before the request reaches any handler
+- **500 on an invalid email in `POST /api/v1/auth/send-link`** — the field was a bare `str`, so any string passed validation and reached Resend, which rejected it with its own `ValidationError`. The junk row had already been committed to `verification_tokens` by then. Added an `Email` type that strips, lowercases, and checks the format
+
+### Improved
+- **Cooldown on unhandled-exception alerts** — 5 minutes per (exception type, method, route template). A single vulnerability scanner previously produced dozens of identical notifications; keying on the route template rather than the raw path collapses fuzzed path parameters into one alert
+
+## [1.6.0] - 2026-05-18
+
 ### Added
 - **Velocity limit (ASPS 1.1)** — two new optional policy fields `requests_per_minute` and `requests_per_hour` cap the frequency of purchase requests independently of amount. Defends against runaway-loop scenarios where an agent spends many small amounts in rapid succession (the $437 and $607 incidents covered in the 2026-05-12 blog post). Velocity is the 2nd check in the policy engine (right after status), tracked via a Redis fixed-window counter. When the limit trips inside a window the audit log keeps exactly one rejected record — subsequent rejections in the same window reuse that `request_id` without writing a new row, protecting the audit log from runaway-loop spam. Available via JSON policy, the AI policy chat, and the dashboard policy preview. ASPS specification bumped to 1.1 (new standard `velocity_limit` check, Sections 9 and 9.1; fully backward-compatible with 1.0).
 

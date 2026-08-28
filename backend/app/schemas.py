@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from zoneinfo import available_timezones
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from pydantic.functional_serializers import PlainSerializer
 
 
@@ -108,13 +108,27 @@ class SignupAttribution(BaseModel):
     content: str | None = Field(default=None, max_length=128)
 
 
+# Trim and lowercase first, then check the shape. Loose on purpose — this only
+# has to reject garbage before it reaches Resend or the DB, and it saves pulling
+# in email-validator for a single field.
+Email = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        to_lower=True,
+        max_length=255,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    ),
+]
+
+
 class SendLinkRequest(BaseModel):
-    email: str = Field(max_length=255)
+    email: Email
     attribution: SignupAttribution | None = None
 
 
 class VerifyOtpRequest(BaseModel):
-    email: str = Field(max_length=255)
+    email: Email
     code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 

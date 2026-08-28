@@ -223,6 +223,35 @@ class SlidingSessionMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RejectNullBytesMiddleware(BaseHTTPMiddleware):
+    """Reject NUL bytes in the path or query string.
+
+    Postgres text columns cannot hold 0x00, so a smuggled NUL reaches asyncpg
+    and blows up as CharacterNotInRepertoireError — a 500 on every route that
+    puts a raw string into a WHERE clause. One guard here beats 27 of them.
+
+    ponytail: path and query only; a NUL inside a JSON body still reaches the
+    DB. Buffering every request body to check it costs more than it saves —
+    add per-field validation if a body path ever starts crashing.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        from fastapi.responses import JSONResponse
+
+        if "\x00" in request.url.path or any(
+            "\x00" in k or "\x00" in v for k, v in request.query_params.items()
+        ):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid characters in request"},
+            )
+        return await call_next(request)
+
+
+_exception_alert_cooldown: dict[str, float] = {}  # alert key -> last sent timestamp
+_EXCEPTION_ALERT_INTERVAL = 300  # 5 minutes between identical alerts
+
+
 class ExceptionAlertMiddleware(BaseHTTPMiddleware):
     """Catch unhandled exceptions, send Telegram alert, return 500."""
 
@@ -230,6 +259,8 @@ class ExceptionAlertMiddleware(BaseHTTPMiddleware):
         try:
             return await call_next(request)
         except Exception as exc:
+            import time
+
             from fastapi.responses import JSONResponse
 
             _logger = logging.getLogger(__name__)
@@ -237,17 +268,33 @@ class ExceptionAlertMiddleware(BaseHTTPMiddleware):
                 "Unhandled exception on %s %s", request.method, request.url.path
             )
 
-            await _send_health_alert(
-                f"💥 Unhandled exception\n"
-                f"{request.method} {request.url.path}\n"
-                f"{type(exc).__name__}: {exc}"
+            # Throttle repeats — a single scanner otherwise sends dozens of
+            # identical alerts. Key on the route template, not the raw path,
+            # so fuzzed path params collapse into one alert.
+            route = request.scope.get("route")
+            route_path = getattr(route, "path", request.url.path)
+            key = f"{type(exc).__name__} {request.method} {route_path}"
+            now = time.monotonic()
+            last_sent = _exception_alert_cooldown.get(
+                key, -_EXCEPTION_ALERT_INTERVAL - 1
             )
+            if now - last_sent > _EXCEPTION_ALERT_INTERVAL:
+                _exception_alert_cooldown[key] = now
+                await _send_health_alert(
+                    f"💥 Unhandled exception\n"
+                    f"{request.method} {request.url.path}\n"
+                    f"{type(exc).__name__}: {exc}"
+                )
 
             return JSONResponse(
                 status_code=500,
                 content={"detail": "Internal server error"},
             )
 
+
+# Added first = innermost. Its 400 still travels back out through the
+# security-header and CORS middlewares below.
+app.add_middleware(RejectNullBytesMiddleware)
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(SlidingSessionMiddleware)

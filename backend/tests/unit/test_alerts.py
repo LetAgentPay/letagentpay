@@ -263,3 +263,26 @@ class TestUnhandledExceptionAlert:
         assert "RuntimeError" in alert_text
         assert "unexpected crash" in alert_text
         client.cookies.clear()
+
+    async def test_repeat_exception_is_throttled(self, client, account):
+        """A scanner hammering one broken route must not send an alert per hit."""
+        from app.main import _exception_alert_cooldown
+
+        _exception_alert_cooldown.clear()
+        token = make_jwt(account.id, account.email)
+        client.cookies.set("access_token", token)
+
+        with (
+            patch("app.main._send_health_alert", new_callable=AsyncMock) as mock_alert,
+            patch(
+                "app.routers.me._account_response",
+                side_effect=RuntimeError("unexpected crash"),
+            ),
+        ):
+            for _ in range(5):
+                resp = await client.get("/api/v1/me")
+                assert resp.status_code == 500
+
+        mock_alert.assert_called_once()
+        _exception_alert_cooldown.clear()
+        client.cookies.clear()

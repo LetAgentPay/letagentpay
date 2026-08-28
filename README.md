@@ -12,7 +12,7 @@
 
 **Agents can't read your card statement at 3 a.m.**
 **Agents can't notice they're about to loop and burn $1,000 on the same API.**
-**Agents can't say "no" to themselves.**
+**Agents can't prove they stayed within the rules — even when they did.**
 
 So we built the layer that does. LetAgentPay sits between your agent and any payment (Stripe, x402, prepaid wallets, gift cards) with three guarantees:
 
@@ -67,7 +67,7 @@ Full guide: [docs/x402.md](docs/x402.md) · Authorize endpoint: [Agent API refer
 
 ## What's inside
 
-- **8-check policy engine** — status, category, per-request limit, schedule, daily/weekly/monthly limits, budget
+- **9-check policy engine** — status, velocity, category, per-request limit, schedule, daily/weekly/monthly limits, budget
 - **Auto-approve** — trusted categories and small amounts go through automatically
 - **Fund holding** — pending requests reserve budget, preventing overspend on races
 - **x402 facilitator-ready** — sign and authorize HTTP 402 micropayments inside the same policy
@@ -219,7 +219,7 @@ backend/
 │   ├── models.py            # SQLAlchemy models
 │   ├── routers/             # API endpoints
 │   └── services/
-│       ├── policy_engine.py # 8-check request validation
+│       ├── policy_engine.py # 9-check request validation
 │       ├── spending.py      # Redis spending counters
 │       ├── ai_policy.py     # Claude: text → policy JSON
 │       └── realtime.py      # Redis pub/sub → SSE

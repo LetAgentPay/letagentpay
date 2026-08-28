@@ -321,10 +321,10 @@ export default function GuidePage() {
             <span className="text-muted-foreground">POST /agent-api/requests</span>
           </p>
           <p>
-            2. Policy engine runs 8 checks →{" "}
+            2. Policy engine runs 9 checks →{" "}
             <span className="text-muted-foreground">
-              status, category, per-request limit, schedule, daily/weekly/monthly
-              limits, budget
+              status, velocity (per-minute/per-hour rate), category, per-request
+              limit, schedule, daily/weekly/monthly limits, budget
             </span>
           </p>
           <p>3. Result:</p>
@@ -611,7 +611,7 @@ export default function GuidePage() {
         <div className="rounded-md border bg-muted/50 p-4 text-sm font-mono">
           <p className="font-semibold mb-1">Check order:</p>
           <p>
-            Agent Policy (8 checks) → Agent Budget → Account Budget Rules
+            Agent Policy (9 checks) → Agent Budget → Account Budget Rules
           </p>
           <p className="text-muted-foreground mt-1">
             If agent policy rejects — account rules are not checked.

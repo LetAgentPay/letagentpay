@@ -638,3 +638,29 @@ class TestPendingRequestLimit:
             headers={"Authorization": f"Bearer {agent.token}"},
         )
         assert resp.status_code == 201
+
+
+class TestNullByteRejection:
+    """NUL in path or query must never reach Postgres (asyncpg raises on 0x00)."""
+
+    async def test_null_byte_in_query_param(self, client, agent):
+        resp = await client.get(
+            "/api/v1/agent-api/requests?status=requests%00",
+            headers={"Authorization": f"Bearer {agent.token}"},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Invalid characters in request"
+
+    async def test_null_byte_in_path_param(self, client, agent):
+        resp = await client.get(
+            "/api/v1/agent-api/requests/12345%00abc",
+            headers={"Authorization": f"Bearer {agent.token}"},
+        )
+        assert resp.status_code == 400
+
+    async def test_clean_query_still_works(self, client, agent):
+        resp = await client.get(
+            "/api/v1/agent-api/requests?status=pending",
+            headers={"Authorization": f"Bearer {agent.token}"},
+        )
+        assert resp.status_code == 200
